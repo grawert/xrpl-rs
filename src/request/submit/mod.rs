@@ -13,9 +13,9 @@ pub struct SubmitRequest {
     pub fail_hard: Option<bool>,
 }
 
-impl Into<Value> for SubmitRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<SubmitRequest> for Value {
+    fn from(val: SubmitRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };

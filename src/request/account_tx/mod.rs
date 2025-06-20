@@ -20,9 +20,9 @@ pub struct AccountTxRequest {
     pub marker: Option<Value>,
 }
 
-impl Into<Value> for AccountTxRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<AccountTxRequest> for Value {
+    fn from(val: AccountTxRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };

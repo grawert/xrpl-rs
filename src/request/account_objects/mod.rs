@@ -33,9 +33,9 @@ pub enum AccountObjectRequestType {
     Ticket,
 }
 
-impl Into<Value> for AccountObjectsRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<AccountObjectsRequest> for Value {
+    fn from(val: AccountObjectsRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };

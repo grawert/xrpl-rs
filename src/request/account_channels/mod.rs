@@ -17,9 +17,9 @@ pub struct AccountChannelsRequest {
     pub marker: Option<Value>,
 }
 
-impl Into<Value> for AccountChannelsRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<AccountChannelsRequest> for Value {
+    fn from(val: AccountChannelsRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };

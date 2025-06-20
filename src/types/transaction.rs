@@ -88,8 +88,8 @@ pub enum Transaction {
     },
 }
 
-impl Into<String> for Transaction {
-    fn into(self) -> String {
-        serde_json::to_value(self).unwrap().to_string()
+impl From<Transaction> for String {
+    fn from(val: Transaction) -> Self {
+        serde_json::to_value(val).unwrap().to_string()
     }
 }

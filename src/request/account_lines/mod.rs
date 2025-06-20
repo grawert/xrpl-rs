@@ -17,9 +17,9 @@ pub struct AccountLinesRequest {
     pub marker: Option<Value>,
 }
 
-impl Into<Value> for AccountLinesRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<AccountLinesRequest> for Value {
+    fn from(val: AccountLinesRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };

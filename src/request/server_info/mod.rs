@@ -7,8 +7,8 @@ use super::{XrplRequest, XrplResponse};
 #[derive(Default, Serialize)]
 pub struct ServerInfoRequest;
 
-impl Into<Value> for ServerInfoRequest {
-    fn into(self) -> Value {
+impl From<ServerInfoRequest> for Value {
+    fn from(_: ServerInfoRequest) -> Self {
         json!({
             "command": "server_info",
             "id": Uuid::new_v4().to_string()

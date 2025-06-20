@@ -48,14 +48,11 @@ impl XrplSocket {
                     msg = ws_receiver.next() => {
                         match msg {
                             Some(msg) => match msg {
-                                Ok(msg) => match msg {
-                                    Message::Text(msg) => {
-                                        let send_res = receiver_out.send(msg);
-                                        if let Err(e) = send_res {
-                                            eprintln!("error sending websocket response over mpsc channel - \n {e:?}")
-                                        }
+                                Ok(msg) => if let Message::Text(msg) = msg {
+                                    let send_res = receiver_out.send(msg);
+                                    if let Err(e) = send_res {
+                                        eprintln!("error sending websocket response over mpsc channel - \n {e:?}")
                                     }
-                                    _ => {}
                                 },
                                 Err(e) => {
                                     eprintln!("got error message over websocket - \n {e:?}");
@@ -85,18 +82,15 @@ impl XrplSocket {
             loop {
                 tokio::select! {
                     msg = sender_in.recv() => {
-                        match msg {
-                            Some(msg) => {
-                                let res = ws_sender.send(Message::Text(msg)).await;
-                                match res {
-                                    Ok(()) => {}
-                                    Err(e) => {
-                                        eprintln!("error sending request message - \n {e:?}");
-                                        cancel.cancel();
-                                    }
+                        if let Some(msg) = msg {
+                            let res = ws_sender.send(Message::Text(msg)).await;
+                            match res {
+                                Ok(()) => {}
+                                Err(e) => {
+                                    eprintln!("error sending request message - \n {e:?}");
+                                    cancel.cancel();
                                 }
                             }
-                            None =>{}
                         }
                     }
                     _ = time::sleep(Duration::from_secs(5)) => {

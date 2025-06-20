@@ -15,9 +15,9 @@ pub struct AccountCurrenciesRequest {
     pub strict: Option<bool>,
 }
 
-impl Into<Value> for AccountCurrenciesRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<AccountCurrenciesRequest> for Value {
+    fn from(val: AccountCurrenciesRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };

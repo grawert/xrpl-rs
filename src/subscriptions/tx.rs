@@ -9,12 +9,12 @@ pub struct AccountTransactionsSubscription {
     pub accounts: Vec<String>,
 }
 
-impl Into<Value> for AccountTransactionsSubscription {
-    fn into(self) -> Value {
+impl From<AccountTransactionsSubscription> for Value {
+    fn from(val: AccountTransactionsSubscription) -> Self {
         json!({
             "id": Uuid::new_v4().to_string(),
             "command": "subscribe",
-            "accounts": self.accounts
+            "accounts": val.accounts
         })
     }
 }
@@ -86,12 +86,12 @@ pub struct AccountTransactionsUnsubscription {
     pub accounts: Vec<String>,
 }
 
-impl Into<Value> for AccountTransactionsUnsubscription {
-    fn into(self) -> Value {
+impl From<AccountTransactionsUnsubscription> for Value {
+    fn from(val: AccountTransactionsUnsubscription) -> Self {
         json!({
             "id": Uuid::new_v4().to_string(),
             "command": "unsubscribe",
-            "accounts": self.accounts
+            "accounts": val.accounts
         })
     }
 }
@@ -108,8 +108,8 @@ pub struct UnsubscribeResponse {
 #[derive(Serialize)]
 pub struct LedgerClosedUnsubscription;
 
-impl Into<Value> for LedgerClosedUnsubscription {
-    fn into(self) -> Value {
+impl From<LedgerClosedUnsubscription> for Value {
+    fn from(_: LedgerClosedUnsubscription) -> Self {
         json!({
             "id": Uuid::new_v4().to_string(),
             "command": "unsubscribe",

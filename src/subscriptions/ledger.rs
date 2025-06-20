@@ -7,8 +7,8 @@ use crate::request::{XrplRequest, XrplResponse, XrplSubscription};
 #[derive(Serialize)]
 pub struct LedgerClosedSubscription;
 
-impl Into<Value> for LedgerClosedSubscription {
-    fn into(self) -> Value {
+impl From<LedgerClosedSubscription> for Value {
+    fn from(_: LedgerClosedSubscription) -> Self {
         json!({
             "id": Uuid::new_v4().to_string(),
             "command": "subscribe",

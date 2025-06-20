@@ -15,9 +15,9 @@ pub struct AccountNftsRequest {
     pub marker: Option<Value>,
 }
 
-impl Into<Value> for AccountNftsRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<AccountNftsRequest> for Value {
+    fn from(val: AccountNftsRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };

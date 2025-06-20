@@ -17,9 +17,9 @@ pub struct AccountInfoRequest {
     pub strict: Option<bool>,
 }
 
-impl Into<Value> for AccountInfoRequest {
-    fn into(self) -> Value {
-        let value = serde_json::to_value(self);
+impl From<AccountInfoRequest> for Value {
+    fn from(val: AccountInfoRequest) -> Self {
+        let value = serde_json::to_value(val);
         if let Err(e) = &value {
             dbg!(e);
         };
