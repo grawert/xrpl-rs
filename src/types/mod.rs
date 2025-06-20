@@ -7,11 +7,7 @@ use serde_derive::{Deserialize, Serialize};
 #[serde(untagged)]
 pub enum Amount {
     Xrpl(String),
-    IssuedCurrency {
-        value: String,
-        currency: String,
-        issuer: String,
-    },
+    IssuedCurrency { value: String, currency: String, issuer: String },
 }
 
 impl Default for Amount {

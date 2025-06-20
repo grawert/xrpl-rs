@@ -24,11 +24,17 @@ impl XrplClient {
         })
     }
 
-    pub async fn call(&self, request: impl Into<Value>) -> anyhow::Result<String> {
+    pub async fn call(
+        &self,
+        request: impl Into<Value>,
+    ) -> anyhow::Result<String> {
         self.socket.request(request.into()).await
     }
 
-    pub async fn request<T: XrplRequest>(&self, request: T) -> anyhow::Result<T::Response> {
+    pub async fn request<T: XrplRequest>(
+        &self,
+        request: T,
+    ) -> anyhow::Result<T::Response> {
         let response = self.call(request).await?;
         let parsed = serde_json::from_str::<T::Response>(&response)?;
         Ok(parsed)

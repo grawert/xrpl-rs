@@ -20,7 +20,10 @@ pub struct XrplSocket {
 }
 
 impl XrplSocket {
-    pub async fn new(url: &str, timeout_dur: Option<i64>) -> anyhow::Result<XrplSocket> {
+    pub async fn new(
+        url: &str,
+        timeout_dur: Option<i64>,
+    ) -> anyhow::Result<XrplSocket> {
         let (receiver_out, receiver) = broadcast::channel(1000);
         let (sender, mut sender_in) = mpsc::channel(1000);
 
@@ -137,9 +140,15 @@ impl XrplSocket {
                         let response = serde_json::from_str::<Value>(&msg);
                         match response {
                             Ok(response) => {
-                                let id = response.as_object().unwrap().get("id").unwrap();
+                                let id = response
+                                    .as_object()
+                                    .unwrap()
+                                    .get("id")
+                                    .unwrap();
                                 if req_id == id {
-                                    out_sender.send(response.to_string()).unwrap();
+                                    out_sender
+                                        .send(response.to_string())
+                                        .unwrap();
                                     break;
                                 }
                             }
@@ -163,7 +172,9 @@ impl XrplSocket {
         }
     }
 
-    pub async fn subscribe<T: XrplSubscription>(&self) -> broadcast::Receiver<T::Message> {
+    pub async fn subscribe<T: XrplSubscription>(
+        &self,
+    ) -> broadcast::Receiver<T::Message> {
         let cancel = self.cancel.clone();
         let mut ws_receiver = self.receiver.resubscribe();
 
