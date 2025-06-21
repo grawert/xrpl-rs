@@ -31,15 +31,37 @@ pub trait XrplRequest: Into<Value> {
     type Response: Debug + DeserializeOwned;
 }
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct XrplResponse<T> {
-    pub id: String,
-    pub result: T,
-    #[serde(rename = "type")]
-    pub kind: String,
-    pub status: String,
-}
-
 pub trait XrplSubscription: XrplRequest {
     type Message: Clone + Debug + Send + DeserializeOwned + 'static;
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum XrplResponse<T> {
+    Success {
+        id: String,
+        result: T,
+        #[serde(rename = "type")]
+        kind: String,
+        status: String,
+    },
+    Error {
+        id: String,
+        error: String,
+        error_exception: String,
+        #[serde(rename = "type")]
+        kind: String,
+        status: String,
+    },
+}
+
+impl<T> XrplResponse<T> {
+    pub fn result(self) -> Result<T, String> {
+        match self {
+            XrplResponse::Success { result, .. } => Ok(result),
+            XrplResponse::Error { error, error_exception, .. } => {
+                Err(format!("{}: {}", error, error_exception))
+            }
+        }
+    }
 }
