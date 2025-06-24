@@ -1,7 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
-
 use crate::request::{XrplRequest, XrplResponse, XrplSubscription};
 
 #[derive(Serialize)]
@@ -24,10 +23,7 @@ impl XrplRequest for AccountTransactionsSubscription {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AccountSubscriptionResponse {
-    // Account subscription acknowledgments return empty result objects
-    // The status is handled by the XrplResponse wrapper
-}
+pub struct AccountSubscriptionResponse {}
 
 impl XrplSubscription for AccountTransactionsSubscription {
     type Message = AccountTransactionMessage;
@@ -35,13 +31,13 @@ impl XrplSubscription for AccountTransactionsSubscription {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountTransactionMessage {
-    pub close_time_iso: String,
+    pub close_time_iso: Option<String>,
     pub engine_result: String,
     pub engine_result_code: i32,
     pub engine_result_message: String,
-    pub ledger_hash: String,
-    pub ledger_index: i64,
-    pub meta: TransactionMeta,
+    pub ledger_hash: Option<String>,
+    pub ledger_index: Option<i64>,
+    pub meta: Option<TransactionMeta>,
     pub status: String,
     pub transaction: Transaction,
     #[serde(rename = "type")]
@@ -53,12 +49,13 @@ pub struct AccountTransactionMessage {
 #[serde(rename_all = "PascalCase")]
 pub struct Transaction {
     pub account: String,
-    pub amount: Value,
+    pub amount: Option<Value>,
     pub deliver_max: Option<String>,
     pub destination: Option<String>,
     pub destination_tag: Option<u32>,
     pub fee: String,
-    pub flags: u32,
+    #[serde(default)]
+    pub flags: Option<u32>,
     pub last_ledger_sequence: Option<i64>,
     pub sequence: i64,
     pub signing_pub_key: String,
@@ -101,9 +98,7 @@ impl XrplRequest for AccountTransactionsUnsubscription {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UnsubscribeResponse {
-    // Unsubscribe responses are typically empty
-}
+pub struct UnsubscribeResponse {}
 
 #[derive(Serialize)]
 pub struct LedgerClosedUnsubscription;
