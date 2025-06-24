@@ -163,3 +163,89 @@ impl From<&Transaction> for Value {
         to_value_skip_nulls(val)
     }
 }
+
+/// Trait for implementing transaction signing.
+///
+/// # Example Implementation
+/// ```rust
+/// use hex;
+/// use anyhow::Result;
+/// use serde_json;
+/// use ripple_keypairs::{PublicKey, PrivateKey};
+/// use rippled_binary_codec::serialize::serialize_tx;
+///
+/// const STX_PREFIX: &str = "53545800"; // STX (535458) + null separator (00)
+///
+/// struct Wallet {
+///     pub public_key: PublicKey,
+///     pub private_key: PrivateKey,
+/// }
+///
+/// impl SigningContext for Wallet {
+///     type Error = anyhow::Error;
+///
+///     fn sign_transaction(&self, tx: &Transaction) -> Result<String, Self::Error> {
+///         // 1. Convert to JSON and add public key
+///         let mut tx_json: serde_json::Value = tx.into();
+///         tx_json["SigningPubKey"] = self.public_key.to_string().into();
+///
+///         // 2. Serialize for signing
+///         let json_str = serde_json::to_string(&tx_json)?;
+///         let tx_hex = serialize_tx(json_str, true).ok_or_else(|| {
+///             anyhow::anyhow!("Failed to serialize transaction for signing")
+///         })?;
+///
+///         // 3. Create signing blob with XRPL STX prefix
+///         let signing_hex = format!("{}{}", STX_PREFIX, tx_hex);
+///         let signing_bytes = hex::decode(&signing_hex)?;
+///
+///         // 4. Sign the full signing blob
+///         let signature = self.private_key.sign(&signing_bytes);
+///         tx_json["TxnSignature"] = signature.to_string().into();
+///
+///         // 5. Serialize final signed transaction
+///         let final_json = serde_json::to_string(&tx_json)?;
+///         let final_bytes = serialize_tx(final_json, false).ok_or_else(|| {
+///             anyhow::anyhow!("Failed to serialize final transaction")
+///         })?;
+///         Ok(final_bytes)
+///     }
+/// }
+///
+/// // Usage:
+/// let wallet = Wallet::from_seed("sSecret...")?;
+/// let payment = Transaction {
+///     account: "rAccount...".to_string(),
+///     sequence: Some(1),
+///     // ... other fields
+///     transaction_type: TransactionType::Payment { /* ... */ },
+/// };
+/// let signed_blob = payment.sign_with(&wallet)?;
+/// let submit_request = SubmitRequest {
+///     tx_blob: signed_blob,
+///     fail_hard: Some(false)
+/// };
+/// ```
+pub trait SigningContext {
+    type Error;
+
+    fn sign_transaction(&self, tx: &Transaction)
+        -> Result<String, Self::Error>;
+}
+
+/// Adds signing capability to Transaction objects
+pub trait Signable {
+    fn sign_with<C: SigningContext>(
+        &self,
+        context: &C,
+    ) -> Result<String, C::Error>;
+}
+
+impl Signable for Transaction {
+    fn sign_with<C: SigningContext>(
+        &self,
+        context: &C,
+    ) -> Result<String, C::Error> {
+        context.sign_transaction(self)
+    }
+}
