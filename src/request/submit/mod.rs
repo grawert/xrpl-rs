@@ -1,4 +1,4 @@
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -36,7 +36,6 @@ pub struct SubmitResponse {
     pub engine_result_code: i64,
     pub engine_result_message: String,
     pub tx_blob: String,
-    pub tx_json: Transaction,
     pub accepted: bool,
     pub account_sequence_available: i64,
     pub account_sequence_next: i64,

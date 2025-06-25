@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
+use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use serde_derive::Deserialize;
 use serde_json::Value;
 
 pub mod account_channels;
@@ -14,18 +14,6 @@ pub mod account_offers;
 pub mod account_tx;
 pub mod server_info;
 pub mod submit;
-
-// pub use account_channels::AccountChannelsRequest;
-// pub use account_currencies::AccountCurrenciesRequest;
-// pub use account_info::AccountInfoRequest;
-// pub use account_lines::AccountLinesRequest;
-// pub use account_nfts::AccountNftsRequest;
-// pub use account_objects::AccountObjectsRequest;
-// pub use account_offers::AccountOffersRequest;
-// pub use account_tx::AccountTxRequest;
-// pub use server_info::ServerInfoRequest;
-// pub use submit::SubmitRequest;
-// pub use subscriptions::ledger::LedgerClosedSubscription;
 
 pub trait XrplRequest: Into<Value> {
     type Response: Debug + DeserializeOwned;
@@ -46,9 +34,17 @@ pub enum XrplResponse<T> {
         status: String,
     },
     Error {
-        id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        id: Option<String>,
         error: String,
-        error_exception: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        error_exception: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        error_code: Option<i32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        error_message: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        request: Option<serde_json::Value>,
         #[serde(rename = "type")]
         kind: String,
         status: String,
@@ -59,8 +55,22 @@ impl<T> XrplResponse<T> {
     pub fn result(self) -> Result<T, String> {
         match self {
             XrplResponse::Success { result, .. } => Ok(result),
-            XrplResponse::Error { error, error_exception, .. } => {
-                Err(format!("{}: {}", error, error_exception))
+            XrplResponse::Error {
+                error,
+                error_exception,
+                error_message,
+                ..
+            } => {
+                let parts: Vec<&str> = [
+                    Some(error.as_str()),
+                    error_exception.as_deref(),
+                    error_message.as_deref(),
+                ]
+                .into_iter()
+                .flatten()
+                .collect();
+
+                Err(parts.join(": "))
             }
         }
     }

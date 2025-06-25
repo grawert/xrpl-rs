@@ -1,48 +1,29 @@
 use serde_json::Value;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
+
+use crate::helpers::*;
 use super::{Amount, PathStep};
-
-pub fn to_json_skip_nulls<T: serde::Serialize>(value: &T) -> String {
-    let mut json =
-        serde_json::to_value(value).expect("Failed to serialize to JSON value");
-    remove_nulls(&mut json);
-    serde_json::to_string(&json)
-        .expect("Failed to serialize JSON value to string")
-}
-
-pub fn to_value_skip_nulls<T: serde::Serialize>(value: &T) -> Value {
-    let mut json =
-        serde_json::to_value(value).expect("Failed to serialize to JSON value");
-    remove_nulls(&mut json);
-    json
-}
-
-fn remove_nulls(value: &mut Value) {
-    if let Value::Object(map) = value {
-        map.retain(|_, v| !v.is_null());
-        map.values_mut().for_each(remove_nulls);
-    } else if let Value::Array(arr) = value {
-        arr.iter_mut().for_each(remove_nulls);
-    }
-}
+use super::builders::PaymentBuilder;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Transaction {
     pub account: String,
-    #[serde(rename = "AccountTxnID")]
     pub account_txn_id: Option<String>,
     pub fee: Option<String>,
     pub flags: Option<u32>,
-    #[serde(rename = "LastLedgerSequence")]
     pub last_ledger_sequence: Option<u32>,
-    pub memos: Option<Vec<Memo>>,
+    pub memos: Option<Vec<MemoWrapper>>,
     pub sequence: Option<u32>,
-    pub signers: Option<Vec<Signer>>,
-    #[serde(rename = "SourceTag")]
+    pub signers: Option<Vec<SignerWrapper>>,
     pub source_tag: Option<u32>,
-    #[serde(rename = "TicketSequence")]
     pub ticket_sequence: Option<u32>,
+
+    // set during singing process
+    pub signing_pub_key: Option<String>,
+    pub txn_signature: Option<String>,
+    pub hash: Option<String>,
+
     #[serde(flatten)]
     pub transaction_type: TransactionType,
 }
@@ -52,27 +33,16 @@ pub struct Transaction {
 pub enum TransactionType {
     #[serde(rename_all = "PascalCase")]
     NFTokenAcceptOffer {
-        #[serde(rename = "NFTokenSellOffer")]
         nftoken_sell_offer: Option<String>,
-        #[serde(rename = "NFTokenBuyOffer")]
         nftoken_buy_offer: Option<String>,
-        #[serde(rename = "NFTokenBrokerFee")]
         nftoken_broker_fee: Option<Amount>,
     },
     #[serde(rename_all = "PascalCase")]
-    NFTokenBurn {
-        #[serde(rename = "NFTokenID")]
-        nftoken_id: String,
-        owner: String,
-    },
+    NFTokenBurn { nftoken_id: String, owner: String },
     #[serde(rename_all = "PascalCase")]
-    NFTokenCancelOffer {
-        #[serde(rename = "NFTokenOffers")]
-        nftoken_offers: Vec<String>,
-    },
+    NFTokenCancelOffer { nftoken_offers: Vec<String> },
     #[serde(rename_all = "PascalCase")]
     NFTokenCreateOffer {
-        #[serde(rename = "NFTokenID")]
         nftoken_id: String,
         amount: Amount,
         owner: Option<String>,
@@ -81,7 +51,6 @@ pub enum TransactionType {
     },
     #[serde(rename_all = "PascalCase")]
     NFTokenMint {
-        #[serde(rename = "NFTokenTaxon")]
         nftoken_taxon: String,
         issuer: String,
         transfer_fee: Option<i64>,
@@ -96,7 +65,6 @@ pub enum TransactionType {
         set_flag: Option<i64>,
         transfer_rate: Option<i64>,
         tick_size: Option<i64>,
-        #[serde(rename = "NFTokenMinter")]
         nftoken_minter: Option<i64>,
     },
     #[serde(rename_all = "PascalCase")]
@@ -126,10 +94,22 @@ pub enum TransactionType {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
+pub struct MemoWrapper {
+    pub memo: Memo,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Memo {
     pub memo_data: Option<String>,
     pub memo_format: Option<String>,
     pub memo_type: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SignerWrapper {
+    pub signer: Signer,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -161,6 +141,16 @@ impl From<Transaction> for Value {
 impl From<&Transaction> for Value {
     fn from(val: &Transaction) -> Self {
         to_value_skip_nulls(val)
+    }
+}
+
+impl Transaction {
+    pub fn payment(
+        account: String,
+        destination: String,
+        amount: Amount,
+    ) -> PaymentBuilder {
+        PaymentBuilder::new(account, destination, amount)
     }
 }
 

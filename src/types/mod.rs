@@ -1,9 +1,14 @@
 pub mod account_object;
+pub mod builders;
 pub mod transaction;
 
-use serde_derive::{Deserialize, Serialize};
+pub use builders::*;
+pub use transaction::*;
+pub use account_object::*;
 
-#[derive(Debug, Deserialize, Serialize)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
 pub enum Amount {
     Xrpl(String),
