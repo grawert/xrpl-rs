@@ -1,10 +1,10 @@
-use serde_json::Value;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
-use crate::helpers::*;
 use super::{Amount, PathStep};
 use super::builders::PaymentBuilder;
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Transaction {
@@ -28,6 +28,7 @@ pub struct Transaction {
     pub transaction_type: TransactionType,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "TransactionType")]
 pub enum TransactionType {
@@ -98,6 +99,7 @@ pub struct MemoWrapper {
     pub memo: Memo,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Memo {
@@ -112,36 +114,13 @@ pub struct SignerWrapper {
     pub signer: Signer,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Signer {
     pub account: String,
     pub txn_signature: String,
     pub signing_pub_key: String,
-}
-
-impl From<Transaction> for String {
-    fn from(val: Transaction) -> Self {
-        to_json_skip_nulls(&val)
-    }
-}
-
-impl From<&Transaction> for String {
-    fn from(val: &Transaction) -> Self {
-        to_json_skip_nulls(val)
-    }
-}
-
-impl From<Transaction> for Value {
-    fn from(val: Transaction) -> Self {
-        to_value_skip_nulls(&val)
-    }
-}
-
-impl From<&Transaction> for Value {
-    fn from(val: &Transaction) -> Self {
-        to_value_skip_nulls(val)
-    }
 }
 
 impl Transaction {

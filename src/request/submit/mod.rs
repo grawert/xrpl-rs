@@ -1,15 +1,15 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use uuid::Uuid;
+use serde_with::skip_serializing_none;
 
-use crate::{request::XrplRequest, types::transaction::Transaction};
+use super::{XrplRequest, XrplResponse};
+use crate::types::transaction::Transaction;
 
-use super::XrplResponse;
-
+#[skip_serializing_none]
 #[derive(Default, Serialize)]
 pub struct SubmitRequest {
     pub tx_blob: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub fail_hard: Option<bool>,
 }
 

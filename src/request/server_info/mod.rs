@@ -1,6 +1,6 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use uuid::Uuid;
 
 use super::{XrplRequest, XrplResponse};
 

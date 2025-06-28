@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 
 pub mod account_channels;
 pub mod account_currencies;
@@ -23,6 +24,7 @@ pub trait XrplSubscription: XrplRequest {
     type Message: Clone + Debug + Send + DeserializeOwned + 'static;
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum XrplResponse<T> {
@@ -34,16 +36,11 @@ pub enum XrplResponse<T> {
         status: String,
     },
     Error {
-        #[serde(skip_serializing_if = "Option::is_none")]
         id: Option<String>,
         error: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         error_exception: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         error_code: Option<i32>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         error_message: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         request: Option<serde_json::Value>,
         #[serde(rename = "type")]
         kind: String,

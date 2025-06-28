@@ -1,14 +1,13 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
-use uuid::Uuid;
 
-use crate::{request::XrplRequest, types::account_object::AccountObject};
+use super::{XrplRequest, XrplResponse};
+use crate::types::account_object::AccountObject;
 
-use super::XrplResponse;
-
-#[derive(Default, Serialize)]
 #[skip_serializing_none]
+#[derive(Default, Serialize)]
 pub struct AccountObjectsRequest {
     pub account: String,
     #[serde(rename = "type")]
@@ -25,7 +24,7 @@ pub enum AccountObjectRequestType {
     Check,
     DepositPreauth,
     Escrow,
-    NftOffer,
+    NFTokenOffer,
     Offer,
     PaymentChannel,
     SignerList,

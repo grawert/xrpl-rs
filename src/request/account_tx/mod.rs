@@ -1,11 +1,10 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
-use uuid::Uuid;
 
-use crate::{request::XrplRequest, types::transaction::Transaction};
-
-use super::XrplResponse;
+use super::{XrplRequest, XrplResponse};
+use crate::types::transaction::Transaction;
 
 #[derive(Default, Serialize)]
 #[skip_serializing_none]
@@ -16,6 +15,7 @@ pub struct AccountTxRequest {
     pub ledger_hash: Option<String>,
     pub ledger_index: Option<i64>,
     pub binary: Option<bool>,
+    pub forward: Option<bool>,
     pub limit: Option<i64>,
     pub marker: Option<Value>,
 }
@@ -42,17 +42,19 @@ pub struct AccountOffersResponse {
     pub account: String,
     pub ledger_index_min: i64,
     pub ledger_index_max: i64,
-    pub limit: i64,
     pub marker: Option<Value>,
     pub transactions: Vec<AccountTransaction>,
     pub validated: Option<bool>,
+    pub limit: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct AccountTransaction {
+    pub meta: Value,
+    pub tx_json: Value,
     pub ledger_index: Option<i64>,
-    // pub meta: Value,
-    pub tx: Option<Transaction>,
-    pub tx_blob: Option<String>,
+    pub hash: String,
+    pub ledger_hash: String,
+    pub close_time_iso: String,
     pub validated: bool,
 }

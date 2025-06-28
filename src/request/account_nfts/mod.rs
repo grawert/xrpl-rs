@@ -1,17 +1,17 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
-use uuid::Uuid;
 
-use crate::request::XrplRequest;
+use super::{XrplRequest, XrplResponse};
 
-use super::XrplResponse;
-
-#[derive(Default, Serialize)]
 #[skip_serializing_none]
+#[derive(Default, Serialize)]
 pub struct AccountNftsRequest {
     pub account: String,
-    pub limit: Option<i64>,
+    pub ledger_hash: Option<String>,
+    pub ledger_index: i64,
+    pub limit: Option<u32>,
     pub marker: Option<Value>,
 }
 
@@ -36,22 +36,23 @@ impl XrplRequest for AccountNftsRequest {
 pub struct AccountNftsResult {
     pub account: String,
     pub account_nfts: Vec<AccountNFToken>,
+    pub ledger_hash: Option<String>,
+    pub ledger_index: i64,
     pub ledger_current_index: i64,
     pub validated: bool,
     pub marker: Option<Value>,
-    pub limit: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AccountNFToken {
-    pub flags: i64,
+    pub flags: u32,
     pub issuer: String,
     #[serde(rename = "NFTokenID")]
     pub nftoken_id: String,
     #[serde(rename = "NFTokenTaxon")]
     pub nftoken_taxon: i64,
     pub uri: Option<String>,
-    #[serde(rename = "NFTokenTaxon")]
+    #[serde(rename = "nft_serial")]
     pub nft_serial: i64,
 }

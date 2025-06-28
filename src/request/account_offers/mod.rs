@@ -1,16 +1,17 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
-use uuid::Uuid;
 
-use crate::{request::XrplRequest, types::Amount};
+use super::{XrplRequest, XrplResponse};
+use crate::types::Amount;
 
-use super::XrplResponse;
-
-#[derive(Default, Serialize)]
 #[skip_serializing_none]
+#[derive(Default, Serialize)]
 pub struct AccountOffersRequest {
     pub account: String,
+    pub ledger_hash: Option<String>,
+    pub ledger_index: i64,
     pub limit: Option<i64>,
     pub marker: Option<Value>,
 }
@@ -35,7 +36,7 @@ impl XrplRequest for AccountOffersRequest {
 #[derive(Debug, Deserialize)]
 pub struct AccountOffersResponse {
     pub account: String,
-    pub account_nfts: Vec<AccountOffer>,
+    pub offers: Vec<AccountOffer>,
     pub ledger_current_index: Option<i64>,
     pub ledger_index: Option<i64>,
     pub ledger_hash: Option<String>,

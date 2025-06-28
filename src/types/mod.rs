@@ -7,6 +7,7 @@ pub use transaction::*;
 pub use account_object::*;
 
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(untagged)]
@@ -22,6 +23,7 @@ impl Default for Amount {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[skip_serializing_none]
 pub struct PathStep {
     pub account: Option<String>,
     pub currency: Option<String>,

@@ -1,14 +1,12 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
-use uuid::Uuid;
 
-use crate::request::XrplRequest;
+use super::{XrplRequest, XrplResponse};
 
-use super::XrplResponse;
-
-#[derive(Default, Serialize)]
 #[skip_serializing_none]
+#[derive(Default, Serialize)]
 pub struct AccountChannelsRequest {
     pub account: String,
     pub destination_account: Option<String>,
