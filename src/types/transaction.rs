@@ -136,7 +136,7 @@ impl Transaction {
 /// Trait for implementing transaction signing.
 ///
 /// # Example Implementation
-/// ```rust
+/// ```ignore
 /// use hex;
 /// use anyhow::Result;
 /// use serde_json;

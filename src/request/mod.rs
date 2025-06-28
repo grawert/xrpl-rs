@@ -1,10 +1,3 @@
-use std::fmt::Debug;
-
-use serde::Deserialize;
-use serde::de::DeserializeOwned;
-use serde_json::Value;
-use serde_with::skip_serializing_none;
-
 pub mod account_channels;
 pub mod account_currencies;
 pub mod account_info;
@@ -15,6 +8,13 @@ pub mod account_offers;
 pub mod account_tx;
 pub mod server_info;
 pub mod submit;
+
+use std::fmt::Debug;
+use serde::Deserialize;
+use serde::de::DeserializeOwned;
+use serde_json::Value;
+use serde_with::skip_serializing_none;
+use crate::error::XrplError;
 
 pub trait XrplRequest: Into<Value> {
     type Response: Debug + DeserializeOwned;
@@ -49,7 +49,7 @@ pub enum XrplResponse<T> {
 }
 
 impl<T> XrplResponse<T> {
-    pub fn result(self) -> Result<T, String> {
+    pub fn result(self) -> Result<T, XrplError> {
         match self {
             XrplResponse::Success { result, .. } => Ok(result),
             XrplResponse::Error {
@@ -57,18 +57,11 @@ impl<T> XrplResponse<T> {
                 error_exception,
                 error_message,
                 ..
-            } => {
-                let parts: Vec<&str> = [
-                    Some(error.as_str()),
-                    error_exception.as_deref(),
-                    error_message.as_deref(),
-                ]
-                .into_iter()
-                .flatten()
-                .collect();
-
-                Err(parts.join(": "))
-            }
+            } => Err(XrplError::ApiError {
+                error,
+                error_exception,
+                error_message,
+            }),
         }
     }
 }
