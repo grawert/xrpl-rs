@@ -1,5 +1,5 @@
 pub mod ledger;
-pub mod tx;
+pub mod transaction;
 
-pub use ledger::LedgerClosedSubscription;
-pub use tx::AccountTransactionsSubscription;
+pub use ledger::*;
+pub use transaction::*;

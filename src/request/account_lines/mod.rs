@@ -9,10 +9,12 @@ use super::{XrplRequest, XrplResponse};
 #[derive(Default, Serialize)]
 pub struct AccountLinesRequest {
     pub account: String,
+    pub ingnore_default: Option<bool>,
     pub ledger_hash: Option<String>,
-    pub peer: Option<String>,
+    pub ledger_index: Option<String>,
     pub limit: Option<i64>,
     pub marker: Option<Value>,
+    pub peer: Option<String>,
 }
 
 impl From<AccountLinesRequest> for Value {
@@ -24,6 +26,7 @@ impl From<AccountLinesRequest> for Value {
         let mut value = value.unwrap().as_object().unwrap().to_owned();
         value.insert("id".into(), Uuid::new_v4().to_string().into());
         value.insert("command".into(), "account_lines".into());
+        value.insert("api_version".into(), 2.into());
         value.into()
     }
 }
@@ -40,6 +43,7 @@ pub struct AccountLinesResult {
     pub ledger_index: Option<i64>,
     pub ledger_hash: Option<String>,
     pub marker: Option<Value>,
+    pub limit: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -2,23 +2,23 @@ use super::{
     TransactionBuilder, TransactionTypeBuilder, BuildError,
     validate_destination,
 };
-use crate::types::transaction::TransactionType;
-use crate::types::{Amount, PathStep};
+use crate::types::{Amount, PathStep, TransactionType};
 
 pub struct Payment {
     pub destination: String,
-    pub amount: Amount,
-    pub destination_tag: Option<i64>,
+    pub amount: Option<Amount>,
+    pub deliver_max: Option<Amount>,
+    pub deliver_min: Option<Amount>,
+    pub destination_tag: Option<u32>,
     pub invoice_id: Option<String>,
     pub paths: Option<Vec<Vec<PathStep>>>,
     pub send_max: Option<Amount>,
-    pub deliver_min: Option<Amount>,
 }
 
 pub type PaymentBuilder = TransactionBuilder<Payment>;
 
 /// Create a new payment transaction
-/// ```ignore
+/// ```
 /// let memo = Memo {
 ///     memo_data: Some("72656e74".to_string()),
 ///     memo_type: Some("746578742f706c61696e".to_string()),
@@ -42,17 +42,18 @@ impl PaymentBuilder {
             account,
             Payment {
                 destination,
-                amount,
+                amount: Some(amount),
+                deliver_max: None,
+                deliver_min: None,
                 destination_tag: None,
                 invoice_id: None,
                 paths: None,
                 send_max: None,
-                deliver_min: None,
             },
         )
     }
 
-    pub fn with_destination_tag(mut self, tag: i64) -> Self {
+    pub fn with_destination_tag(mut self, tag: u32) -> Self {
         self.transaction_type.destination_tag = Some(tag);
         self
     }
@@ -62,13 +63,13 @@ impl PaymentBuilder {
         self
     }
 
-    pub fn with_send_max(mut self, amount: Amount) -> Self {
-        self.transaction_type.send_max = Some(amount);
+    pub fn with_deliver_min(mut self, amount: Amount) -> Self {
+        self.transaction_type.deliver_min = Some(amount);
         self
     }
 
-    pub fn with_deliver_min(mut self, amount: Amount) -> Self {
-        self.transaction_type.deliver_min = Some(amount);
+    pub fn with_send_max(mut self, amount: Amount) -> Self {
+        self.transaction_type.send_max = Some(amount);
         self
     }
 
@@ -81,53 +82,94 @@ impl PaymentBuilder {
 impl TransactionTypeBuilder for Payment {
     type TransactionType = TransactionType;
 
+    fn validate(&self) -> Result<(), BuildError> {
+        validate_destination(&self.destination)?;
+
+        if let Some(ref amount) = self.amount {
+            validate_amount(amount)?;
+        }
+
+        Ok(())
+    }
+
     fn build_transaction_type(
         self,
     ) -> Result<Self::TransactionType, BuildError> {
         Ok(TransactionType::Payment {
             amount: self.amount,
+            deliver_max: self.deliver_max,
+            deliver_min: self.deliver_min,
             destination: self.destination,
             destination_tag: self.destination_tag,
             invoice_id: self.invoice_id,
             paths: self.paths,
             send_max: self.send_max,
-            deliver_min: self.deliver_min,
         })
     }
+}
 
-    fn validate_specific_fields(&self) -> Result<(), BuildError> {
-        validate_destination(&self.destination)?;
-
-        if let Amount::Xrpl(ref amount_str) = self.amount {
-            if amount_str.is_empty() || amount_str == "0" {
-                return Err(BuildError::InvalidAmount(
-                    "XRP amount cannot be zero or empty".to_string(),
-                ));
-            }
+fn validate_amount(amount: &Amount) -> Result<(), BuildError> {
+    match amount {
+        Amount::Xrpl(amount_str) => validate_xrp_amount(amount_str),
+        Amount::IssuedCurrency { value, currency, issuer } => {
+            validate_token_value(value)?;
+            validate_currency(currency)?;
+            validate_issuer(issuer)
         }
-
-        if let (Amount::Xrpl(ref amount), Some(Amount::Xrpl(ref send_max))) =
-            (&self.amount, &self.send_max)
-        {
-            if let (Ok(amount_val), Ok(send_max_val)) =
-                (amount.parse::<u64>(), send_max.parse::<u64>())
-            {
-                if send_max_val < amount_val {
-                    return Err(BuildError::InvalidAmount(
-                        "SendMax cannot be less than Amount for XRP-to-XRP payments".to_string()
-                    ));
-                }
-            }
-        }
-
-        Ok(())
     }
+}
+
+fn validate_xrp_amount(amount_str: &str) -> Result<(), BuildError> {
+    if amount_str.is_empty() || amount_str == "0" {
+        return Err(BuildError::InvalidAmount(
+            "XRP amount cannot be zero or empty".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn validate_token_value(value: &str) -> Result<(), BuildError> {
+    if value.is_empty() || value == "0" {
+        return Err(BuildError::InvalidAmount(
+            "Token value cannot be zero or empty".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn validate_currency(currency: &str) -> Result<(), BuildError> {
+    if currency.len() != 3 || !currency.chars().all(|c| c.is_ascii_uppercase())
+    {
+        return Err(BuildError::InvalidAmount(
+            "Currency must be exactly 3 uppercase ASCII characters".to_string(),
+        ));
+    }
+    if currency == "XRP" {
+        return Err(BuildError::InvalidAmount(
+            "Currency code XRP is not allowed for issued currencies"
+                .to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn validate_issuer(issuer: &str) -> Result<(), BuildError> {
+    if !issuer.starts_with('r') {
+        return Err(BuildError::InvalidAmount(
+            "Issuer address must start with 'r'".to_string(),
+        ));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::transaction::Memo;
+    use crate::types::Memo;
 
     #[test]
     fn test_payment_builder_basic() {
@@ -149,7 +191,7 @@ mod tests {
             payment.transaction_type
         {
             assert_eq!(destination, "rDestination456");
-            assert_eq!(amount, Amount::Xrpl("1000000".to_string()));
+            assert_eq!(amount.unwrap(), Amount::Xrpl("1000000".to_string()));
         } else {
             panic!("Expected Payment transaction type");
         }
@@ -222,5 +264,43 @@ mod tests {
         .build();
 
         assert!(matches!(result, Err(BuildError::EmptyDestination)));
+    }
+
+    #[test]
+    fn test_payment_builder_with_issued_currency() {
+        let payment = PaymentBuilder::new(
+            "rAccount123".to_string(),
+            "rDestination456".to_string(),
+            Amount::IssuedCurrency {
+                value: "100.50".to_string(),
+                currency: "USD".to_string(),
+                issuer: "rTrust1234567890123456789012345".to_string(),
+            },
+        )
+        .with_sequence(1)
+        .with_fee("10")
+        .build()
+        .expect("Should build valid payment with issued currency");
+
+        assert_eq!(payment.account, "rAccount123");
+        assert_eq!(payment.sequence, Some(1));
+        assert_eq!(payment.fee, Some("10".to_string()));
+
+        if let TransactionType::Payment { destination, amount, .. } =
+            payment.transaction_type
+        {
+            assert_eq!(destination, "rDestination456");
+            if let Some(Amount::IssuedCurrency { value, currency, issuer }) =
+                amount
+            {
+                assert_eq!(value, "100.50");
+                assert_eq!(currency, "USD");
+                assert_eq!(issuer, "rTrust1234567890123456789012345");
+            } else {
+                panic!("Expected IssuedCurrency amount");
+            }
+        } else {
+            panic!("Expected Payment transaction type");
+        }
     }
 }

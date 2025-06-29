@@ -2,12 +2,10 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum XrplError {
-    #[error("XRPL API returned error: {error}")]
-    ApiError {
-        error: String,
-        error_exception: Option<String>,
-        error_message: Option<String>,
-    },
+    #[error("XRPL API returned error: {error}: {}",
+        error_message.as_ref().map(|msg| format!("{}", msg))
+        .unwrap_or_default())]
+    ApiError { error: String, error_message: Option<String> },
     #[error("Failed to parse XRPL response: {0}")]
     ParseError(String),
     #[error("Socket error: {0}")]

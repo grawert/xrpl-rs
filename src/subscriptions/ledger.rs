@@ -24,7 +24,6 @@ impl XrplRequest for LedgerClosedSubscription {
 #[derive(Debug, Deserialize)]
 pub struct LedgerSubscriptionResponse {
     pub fee_base: i64,
-    pub fee_ref: i64,
     pub ledger_hash: String,
     pub ledger_index: i64,
     pub ledger_time: i64,
@@ -40,7 +39,6 @@ impl XrplSubscription for LedgerClosedSubscription {
 #[derive(Debug, Clone, Deserialize)]
 pub struct LedgerSubscriptionMessage {
     pub fee_base: i64,
-    pub fee_ref: i64,
     pub ledger_hash: String,
     pub ledger_index: i64,
     pub ledger_time: i64,

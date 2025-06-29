@@ -10,6 +10,7 @@ use super::{XrplRequest, XrplResponse};
 pub struct AccountCurrenciesRequest {
     pub account: String,
     pub ledger_hash: Option<String>,
+    pub ledger_index: Option<String>,
     pub strict: Option<bool>,
 }
 

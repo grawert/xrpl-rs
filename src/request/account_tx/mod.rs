@@ -4,10 +4,10 @@ use serde_json::Value;
 use serde_with::skip_serializing_none;
 
 use super::{XrplRequest, XrplResponse};
-use crate::types::transaction::Transaction;
+use crate::types::Transaction;
 
-#[derive(Default, Serialize)]
 #[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct AccountTxRequest {
     pub account: String,
     pub ledger_index_min: Option<i64>,
@@ -29,16 +29,17 @@ impl From<AccountTxRequest> for Value {
         let mut value = value.unwrap().as_object().unwrap().to_owned();
         value.insert("id".into(), Uuid::new_v4().to_string().into());
         value.insert("command".into(), "account_tx".into());
+        value.insert("api_version".into(), 2.into());
         value.into()
     }
 }
 
 impl XrplRequest for AccountTxRequest {
-    type Response = XrplResponse<AccountOffersResponse>;
+    type Response = XrplResponse<AccountTxResponse>;
 }
 
-#[derive(Debug, Deserialize)]
-pub struct AccountOffersResponse {
+#[derive(Debug, Clone, Deserialize)]
+pub struct AccountTxResponse {
     pub account: String,
     pub ledger_index_min: i64,
     pub ledger_index_max: i64,
@@ -48,13 +49,9 @@ pub struct AccountOffersResponse {
     pub limit: Option<i64>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AccountTransaction {
     pub meta: Value,
-    pub tx_json: Value,
-    pub ledger_index: Option<i64>,
-    pub hash: String,
-    pub ledger_hash: String,
-    pub close_time_iso: String,
+    pub tx_json: Transaction,
     pub validated: bool,
 }

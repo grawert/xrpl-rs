@@ -8,9 +8,10 @@ pub mod account_offers;
 pub mod account_tx;
 pub mod server_info;
 pub mod submit;
+pub mod tx;
 
 use std::fmt::Debug;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use serde_with::skip_serializing_none;
@@ -20,7 +21,7 @@ pub trait XrplRequest: Into<Value> {
     type Response: Debug + DeserializeOwned;
 }
 
-pub trait XrplSubscription: XrplRequest {
+pub trait XrplSubscription: XrplRequest + Serialize {
     type Message: Clone + Debug + Send + DeserializeOwned + 'static;
 }
 
@@ -38,7 +39,6 @@ pub enum XrplResponse<T> {
     Error {
         id: Option<String>,
         error: String,
-        error_exception: Option<String>,
         error_code: Option<i32>,
         error_message: Option<String>,
         request: Option<serde_json::Value>,
@@ -52,16 +52,16 @@ impl<T> XrplResponse<T> {
     pub fn result(self) -> Result<T, XrplError> {
         match self {
             XrplResponse::Success { result, .. } => Ok(result),
-            XrplResponse::Error {
-                error,
-                error_exception,
-                error_message,
-                ..
-            } => Err(XrplError::ApiError {
-                error,
-                error_exception,
-                error_message,
-            }),
+            XrplResponse::Error { error, error_message, .. } => {
+                Err(XrplError::ApiError { error, error_message })
+            }
+        }
+    }
+
+    pub fn id(&self) -> Option<&str> {
+        match self {
+            XrplResponse::Success { id, .. } => Some(id),
+            XrplResponse::Error { id, .. } => id.as_deref(),
         }
     }
 }

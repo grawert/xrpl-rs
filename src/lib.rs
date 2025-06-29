@@ -6,6 +6,7 @@ pub mod types;
 
 use tokio::sync::broadcast;
 use serde_json::Value;
+
 use error::XrplError;
 use socket::XrplSocket;
 use request::{XrplRequest, XrplSubscription};
@@ -18,35 +19,29 @@ pub struct XrplClient {
 
 impl XrplClient {
     pub async fn new(url: &str) -> Result<XrplClient, XrplError> {
-        Ok(XrplClient {
-            url: url.into(),
-            socket: XrplSocket::new(url, None).await?,
-        })
+        let socket = XrplSocket::new(url, None).await?;
+
+        Ok(XrplClient { url: url.into(), socket })
     }
 
     pub async fn call(
         &self,
         request: impl Into<Value>,
     ) -> Result<String, XrplError> {
-        let response = self.socket.request(request.into()).await?;
+        let request = request.into();
+        let response = self.socket.request(request).await?;
 
-        // Parse response to check for XRPL API errors
         if let Ok(parsed) = serde_json::from_str::<Value>(&response) {
             if let Some(error) = parsed.get("error") {
                 return Err(XrplError::ApiError {
                     error: error.as_str().unwrap_or("unknown").to_string(),
-                    error_exception: parsed
-                        .get("error_exception")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
                     error_message: parsed
                         .get("error_message")
-                        .and_then(|v| v.as_str())
+                        .and_then(|msg| msg.as_str())
                         .map(|s| s.to_string()),
                 });
             }
         }
-
         Ok(response)
     }
 
@@ -62,10 +57,24 @@ impl XrplClient {
 
     pub async fn subscribe<T: XrplSubscription>(
         &self,
-        request: T,
+        subscription: T,
     ) -> Result<(T::Response, broadcast::Receiver<T::Message>), XrplError> {
-        let response = self.request(request).await?;
+        let subscription_value: Value = subscription.into();
+
+        let response = self.call(subscription_value).await?;
+        let response = serde_json::from_str::<T::Response>(&response)
+            .map_err(|e| XrplError::ParseError(e.to_string()))?;
+
         let receiver = self.socket.subscribe::<T>().await?;
+
         Ok((response, receiver))
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.socket.is_connected()
+    }
+
+    pub async fn close(&self) {
+        self.socket.close().await;
     }
 }

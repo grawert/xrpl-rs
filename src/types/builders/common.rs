@@ -1,19 +1,19 @@
-use crate::types::transaction::{
+use crate::types::{
     Memo, MemoWrapper, Signer, SignerWrapper, Transaction, TransactionType,
 };
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
+    #[error("Fee is required")]
+    MissingFee,
+    #[error("Sequence number is required")]
+    MissingSequence,
     #[error("Account cannot be empty")]
     EmptyAccount,
     #[error("Invalid amount: {0}")]
     InvalidAmount(String),
     #[error("Destination cannot be empty")]
     EmptyDestination,
-    #[error("Sequence number is required")]
-    MissingSequence,
-    #[error("Fee is required")]
-    MissingFee,
     #[error("Invalid field: {0}")]
     InvalidField(String),
 }
@@ -35,10 +35,10 @@ pub struct TransactionBuilder<T> {
 pub trait TransactionTypeBuilder {
     type TransactionType;
 
+    fn validate(&self) -> Result<(), BuildError>;
     fn build_transaction_type(
         self,
     ) -> Result<Self::TransactionType, BuildError>;
-    fn validate_specific_fields(&self) -> Result<(), BuildError>;
 }
 
 impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
@@ -113,7 +113,7 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
 
     pub fn build(self) -> Result<Transaction, BuildError> {
         validate_account(&self.account)?;
-        self.transaction_type.validate_specific_fields()?;
+        self.transaction_type.validate()?;
         let transaction_type =
             self.transaction_type.build_transaction_type()?;
 

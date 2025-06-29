@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use super::{Amount, PathStep};
+use super::Amount;
 
 #[skip_serializing_none]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Transaction {
     pub account: String,
@@ -28,78 +28,75 @@ pub struct Transaction {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(tag = "TransactionType")]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "TransactionType", rename_all_fields = "PascalCase")]
 pub enum TransactionType {
-    #[serde(rename_all = "PascalCase")]
     NFTokenAcceptOffer {
         nftoken_sell_offer: Option<String>,
         nftoken_buy_offer: Option<String>,
         nftoken_broker_fee: Option<Amount>,
     },
-    #[serde(rename_all = "PascalCase")]
-    NFTokenBurn { nftoken_id: String, owner: String },
-    #[serde(rename_all = "PascalCase")]
-    NFTokenCancelOffer { nftoken_offers: Vec<String> },
-    #[serde(rename_all = "PascalCase")]
+    NFTokenBurn {
+        nftoken_id: String,
+        owner: String,
+    },
+    NFTokenCancelOffer {
+        nftoken_offers: Vec<String>,
+    },
     NFTokenCreateOffer {
         nftoken_id: String,
         amount: Amount,
         owner: Option<String>,
-        expiration: Option<i64>,
+        expiration: Option<u32>,
         destination: Option<String>,
     },
-    #[serde(rename_all = "PascalCase")]
     NFTokenMint {
         nftoken_taxon: String,
         issuer: String,
-        transfer_fee: Option<i64>,
+        transfer_fee: Option<u32>,
         uri: Option<String>,
     },
-    #[serde(rename_all = "PascalCase")]
     AccountSet {
         clear_flag: Option<i64>,
         domain: Option<String>,
         email_hash: Option<String>,
         message_key: Option<String>,
-        set_flag: Option<i64>,
-        transfer_rate: Option<i64>,
-        tick_size: Option<i64>,
-        nftoken_minter: Option<i64>,
+        set_flag: Option<u32>,
+        transfer_rate: Option<u32>,
+        tick_size: Option<u32>,
+        nftoken_minter: Option<u32>,
     },
-    #[serde(rename_all = "PascalCase")]
     TrustSet {
         limit_amount: Amount,
-        quality_in: Option<i64>,
-        quality_out: Option<i64>,
+        quality_in: Option<u32>,
+        quality_out: Option<u32>,
     },
-    #[serde(rename_all = "PascalCase")]
     OfferCreate {
-        expiration: Option<i64>,
-        offer_sequence: Option<i64>,
+        expiration: Option<u32>,
+        offer_sequence: Option<u32>,
         taker_gets: Amount,
         taker_pays: Amount,
     },
-    #[serde(rename_all = "PascalCase")]
     Payment {
-        amount: Amount,
+        amount: Option<Amount>,
+        deliver_max: Option<Amount>,
+        deliver_min: Option<Amount>,
         destination: String,
-        destination_tag: Option<i64>,
+        destination_tag: Option<u32>,
         invoice_id: Option<String>,
         paths: Option<Vec<Vec<PathStep>>>,
         send_max: Option<Amount>,
-        deliver_min: Option<Amount>,
     },
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct MemoWrapper {
     pub memo: Memo,
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Memo {
     pub memo_data: Option<String>,
@@ -107,14 +104,14 @@ pub struct Memo {
     pub memo_type: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct SignerWrapper {
     pub signer: Signer,
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Signer {
     pub account: String,
@@ -122,9 +119,17 @@ pub struct Signer {
     pub signing_pub_key: String,
 }
 
+#[skip_serializing_none]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PathStep {
+    pub account: Option<String>,
+    pub currency: Option<String>,
+    pub isssuer: Option<String>,
+}
+
 /// # Transaction signing interface
 ///
-/// ```ignore
+/// ```
 /// use hex;
 /// use anyhow::Result;
 /// use serde_json;

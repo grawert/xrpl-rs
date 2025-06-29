@@ -1,17 +1,38 @@
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use uuid::Uuid;
+use crate::types::Transaction;
 use crate::request::{XrplRequest, XrplResponse, XrplSubscription};
 
 #[derive(Serialize)]
 pub struct AccountTransactionsSubscription {
+    #[serde(skip_serializing)]
+    pub id: Option<String>,
     pub accounts: Vec<String>,
 }
 
+impl AccountTransactionsSubscription {
+    pub fn new(accounts: Vec<String>) -> Self {
+        Self { accounts, id: None }
+    }
+
+    pub fn with_id(mut self, id: String) -> Self {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn get_id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+}
+
 impl From<AccountTransactionsSubscription> for Value {
-    fn from(val: AccountTransactionsSubscription) -> Self {
+    fn from(mut val: AccountTransactionsSubscription) -> Self {
+        let id = val.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+        val.id = Some(id.clone());
+
         json!({
-            "id": Uuid::new_v4().to_string(),
+            "id": id,
             "command": "subscribe",
             "accounts": val.accounts
         })
@@ -45,30 +66,7 @@ pub struct AccountTransactionMessage {
     pub validated: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct Transaction {
-    pub account: String,
-    pub amount: Option<Value>,
-    pub deliver_max: Option<String>,
-    pub destination: Option<String>,
-    pub destination_tag: Option<u32>,
-    pub fee: String,
-    #[serde(default)]
-    pub flags: Option<u32>,
-    pub last_ledger_sequence: Option<i64>,
-    pub sequence: i64,
-    pub signing_pub_key: String,
-    pub transaction_type: String,
-    pub txn_signature: String,
-    pub date: Option<i64>,
-    #[serde(rename = "hash")]
-    pub hash: String,
-    #[serde(flatten)]
-    pub other_fields: std::collections::HashMap<String, Value>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct TransactionMeta {
     pub affected_nodes: Vec<Value>,
@@ -81,12 +79,32 @@ pub struct TransactionMeta {
 #[derive(Serialize)]
 pub struct AccountTransactionsUnsubscription {
     pub accounts: Vec<String>,
+    #[serde(skip_serializing)]
+    pub id: Option<String>,
+}
+
+impl AccountTransactionsUnsubscription {
+    pub fn new(accounts: Vec<String>) -> Self {
+        Self { accounts, id: None }
+    }
+
+    pub fn with_id(mut self, id: String) -> Self {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn get_id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
 }
 
 impl From<AccountTransactionsUnsubscription> for Value {
-    fn from(val: AccountTransactionsUnsubscription) -> Self {
+    fn from(mut val: AccountTransactionsUnsubscription) -> Self {
+        let id = val.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+        val.id = Some(id.clone());
+
         json!({
-            "id": Uuid::new_v4().to_string(),
+            "id": id,
             "command": "unsubscribe",
             "accounts": val.accounts
         })
@@ -101,12 +119,33 @@ impl XrplRequest for AccountTransactionsUnsubscription {
 pub struct UnsubscribeResponse {}
 
 #[derive(Serialize)]
-pub struct LedgerClosedUnsubscription;
+pub struct LedgerClosedUnsubscription {
+    #[serde(skip_serializing)]
+    pub id: Option<String>,
+}
+
+impl LedgerClosedUnsubscription {
+    pub fn new() -> Self {
+        Self { id: None }
+    }
+
+    pub fn with_id(mut self, id: String) -> Self {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn get_id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+}
 
 impl From<LedgerClosedUnsubscription> for Value {
-    fn from(_: LedgerClosedUnsubscription) -> Self {
+    fn from(mut val: LedgerClosedUnsubscription) -> Self {
+        let id = val.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+        val.id = Some(id.clone());
+
         json!({
-            "id": Uuid::new_v4().to_string(),
+            "id": id,
             "command": "unsubscribe",
             "streams": ["ledger"]
         })
