@@ -10,6 +10,7 @@ use error::XrplError;
 use socket::XrplSocket;
 use request::{XrplRequest, XrplSubscription};
 
+#[derive(Debug, Clone)]
 pub struct XrplClient {
     pub url: String,
     socket: XrplSocket,

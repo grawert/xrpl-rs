@@ -12,11 +12,23 @@ use tokio_util::sync::CancellationToken;
 use crate::error::XrplSocketError;
 use crate::request::XrplSubscription;
 
+#[derive(Debug)]
 pub struct XrplSocket {
     receiver: broadcast::Receiver<String>,
     sender: mpsc::Sender<String>,
     timeout_dur: Option<i64>,
     cancel: CancellationToken,
+}
+
+impl Clone for XrplSocket {
+    fn clone(&self) -> Self {
+        Self {
+            receiver: self.receiver.resubscribe(),
+            sender: self.sender.clone(),
+            timeout_dur: self.timeout_dur,
+            cancel: self.cancel.clone(),
+        }
+    }
 }
 
 impl XrplSocket {
