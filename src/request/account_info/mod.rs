@@ -32,7 +32,7 @@ impl XrplRequest for AccountInfoRequest {
     type Response = XrplResponse<AccountInfoResult>;
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AccountInfoResult {
     pub account_data: AccountRoot,
     pub signer_lists: Option<Vec<String>>,
@@ -42,7 +42,7 @@ pub struct AccountInfoResult {
     pub validated: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AccountRoot {
     pub account: String,
@@ -58,7 +58,7 @@ pub struct AccountRoot {
     pub index: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct QueueData {
     pub txn_count: i64,
     pub auth_change_queued: Option<bool>,
@@ -68,7 +68,7 @@ pub struct QueueData {
     pub transactions: Option<Vec<QueueTransaction>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct QueueTransaction {
     pub auth_change: bool,
     pub fee: String,

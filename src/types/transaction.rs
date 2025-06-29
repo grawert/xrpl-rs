@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 use super::{Amount, PathStep};
-use super::builders::PaymentBuilder;
 
 #[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize)]
@@ -123,19 +122,8 @@ pub struct Signer {
     pub signing_pub_key: String,
 }
 
-impl Transaction {
-    pub fn payment(
-        account: String,
-        destination: String,
-        amount: Amount,
-    ) -> PaymentBuilder {
-        PaymentBuilder::new(account, destination, amount)
-    }
-}
-
-/// Trait for implementing transaction signing.
+/// # Transaction signing interface
 ///
-/// # Example Implementation
 /// ```ignore
 /// use hex;
 /// use anyhow::Result;
@@ -183,12 +171,15 @@ impl Transaction {
 ///
 /// // Usage:
 /// let wallet = Wallet::from_seed("sSecret...")?;
-/// let payment = Transaction {
-///     account: "rAccount...".to_string(),
-///     sequence: Some(1),
-///     // ... other fields
-///     transaction_type: TransactionType::Payment { /* ... */ },
-/// };
+/// let payment = PaymentBuilder::new(
+///        account.clone().into(),
+///        destination.into(),
+///        Amount::Xrpl(amount.to_string()),
+///    )
+///    .with_sequence(sequence)
+///    .with_fee(fee.to_string())
+///    .build()?;
+///
 /// let signed_blob = payment.sign_with(&wallet)?;
 /// let submit_request = SubmitRequest {
 ///     tx_blob: signed_blob,
@@ -202,7 +193,7 @@ pub trait SigningContext {
         -> Result<String, Self::Error>;
 }
 
-/// Adds signing capability to Transaction objects
+/// # Make a transaction signable
 pub trait Signable {
     fn sign_with<C: SigningContext>(
         &self,

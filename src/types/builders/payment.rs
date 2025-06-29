@@ -17,6 +17,25 @@ pub struct Payment {
 
 pub type PaymentBuilder = TransactionBuilder<Payment>;
 
+/// Create a new payment transaction
+/// ```ignore
+/// let memo = Memo {
+///     memo_data: Some("72656e74".to_string()),
+///     memo_type: Some("746578742f706c61696e".to_string()),
+///     memo_format: None,
+///     };
+///
+/// let payment = PaymentBuilder::new(
+///     account.clone().into(),
+///     destination.into(),
+///     Amount::Xrpl(amount.to_string()),
+/// )
+/// .with_sequence(sequence)
+/// .with_fee(fee.to_string())
+/// .with_destination_tag(destination_tag)
+/// .with_memos(vec![memo])
+/// .build()?;
+/// ```
 impl PaymentBuilder {
     pub fn new(account: String, destination: String, amount: Amount) -> Self {
         Self::init(
