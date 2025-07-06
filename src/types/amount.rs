@@ -228,23 +228,16 @@ mod tests {
     #[test]
     fn test_conversions() {
         let amount1 = Amount::from(1000000i64);
-        let amount2 = Amount::xrp("1").unwrap();
-        let amount3 = xrp!(1.0);
-        let amount4 = drops!(1000000);
+        let amount2 = Amount::from(1.0f64);
+        let amount3 = Amount::drops("1000000").unwrap();
+        let amount4 = Amount::xrp("1").unwrap();
+        let amount5 = xrp!(1.0);
+        let amount6 = drops!(1000000);
 
         assert_eq!(amount1, amount2);
         assert_eq!(amount2, amount3);
-        assert_eq!(amount1, amount4);
-
-        let amount5 = Amount::from(1.0f64);
-        let amount6 = xrp!(1.0);
-        let amount7 = xrp!(1.0);
-        let amount8 = Amount::drops("1000000").unwrap();
-
-        assert_eq!(amount1, amount5);
+        assert_eq!(amount4, amount5);
         assert_eq!(amount5, amount6);
-        assert_eq!(amount6, amount7);
-        assert_eq!(amount8, amount7);
 
         let half_xrp = Amount::from(0.5f64);
         assert_eq!(half_xrp.to_drops().unwrap(), 500000);

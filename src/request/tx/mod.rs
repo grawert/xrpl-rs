@@ -6,6 +6,8 @@ use serde_with::skip_serializing_none;
 use super::{XrplRequest, XrplResponse};
 use crate::types::Transaction;
 
+const API_VERSION: u32 = 2;
+
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct TxRequest {
@@ -25,7 +27,7 @@ impl From<TxRequest> for Value {
         let mut value = value.unwrap().as_object().unwrap().to_owned();
         value.insert("id".into(), Uuid::new_v4().to_string().into());
         value.insert("command".into(), "tx".into());
-        value.insert("api_version".into(), 2.into());
+        value.insert("api_version".into(), API_VERSION.into());
         value.into()
     }
 }

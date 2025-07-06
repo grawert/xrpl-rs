@@ -10,7 +10,7 @@ use super::{XrplRequest, XrplResponse};
 pub struct AccountNftsRequest {
     pub account: String,
     pub ledger_hash: Option<String>,
-    pub ledger_index: i64,
+    pub ledger_index: Option<String>,
     pub limit: Option<u32>,
     pub marker: Option<Value>,
 }
@@ -38,8 +38,8 @@ pub struct AccountNftsResult {
     pub account_nfts: Vec<AccountNFToken>,
     pub ledger_hash: Option<String>,
     pub ledger_index: i64,
-    pub ledger_current_index: i64,
-    pub validated: bool,
+    pub ledger_current_index: Option<i64>,
+    pub validated: Option<bool>,
     pub marker: Option<Value>,
 }
 
@@ -52,6 +52,7 @@ pub struct AccountNFToken {
     pub nftoken_id: String,
     #[serde(rename = "NFTokenTaxon")]
     pub nftoken_taxon: i64,
+    #[serde(rename = "URI")]
     pub uri: Option<String>,
     #[serde(rename = "nft_serial")]
     pub nft_serial: i64,

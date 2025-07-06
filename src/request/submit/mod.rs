@@ -5,6 +5,8 @@ use serde_with::skip_serializing_none;
 
 use super::{XrplRequest, XrplResponse};
 
+const API_VERSION: u32 = 2;
+
 #[skip_serializing_none]
 #[derive(Default, Serialize)]
 pub struct SubmitRequest {
@@ -21,7 +23,7 @@ impl From<SubmitRequest> for Value {
         let mut value = value.unwrap().as_object().unwrap().to_owned();
         value.insert("id".into(), Uuid::new_v4().to_string().into());
         value.insert("command".into(), "submit".into());
-        value.insert("api_version".into(), 2.into());
+        value.insert("api_version".into(), API_VERSION.into());
         value.into()
     }
 }

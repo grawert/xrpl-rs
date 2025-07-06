@@ -7,11 +7,13 @@ pub enum AccountObject {
     Check(Check),
     DepositPreauth(DepositPreauth),
     Escrow(Escrow),
+    MPToken(MPToken),
     NFTokenOffer(NFTokenOffer),
+    NFTokenPage(NFTokenPage),
     Offer(Offer),
     PaymentChannel(PaymentChannel),
-    SignerList(SignerList),
     RippleState(RippleState),
+    SignerList(SignerList),
     Ticket(Ticket),
 }
 
@@ -22,25 +24,29 @@ pub struct Check {
     pub destination: String,
     pub flags: i64,
     pub owner_node: String,
-    pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
     pub send_max: Value,
     pub sequence: i64,
     pub destination_node: String,
     pub detination_tag: String,
     pub invoice_id: String,
     pub source_tag: String,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DepositPreauth {
     pub account: String,
-    pub authorize: String,
-    pub flags: i64,
+    pub authorize: Option<String>,
+    pub authorize_credentials: Option<Value>,
     pub owner_node: String,
+    #[serde(rename = "PreviousTxnID")]
     pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,8 +63,25 @@ pub struct Escrow {
     pub destination_tag: Option<i64>,
     pub owner_node: String,
     pub destionation_node: Option<String>,
+    #[serde(rename = "PreviousTxnID")]
     pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct MPToken {
+    pub account: String,
+    #[serde(rename = "MPTokenIssuanceID")]
+    pub mpt_issuance_id: Value,
+    pub mpt_amount: Value,
+    pub flags: Option<u32>,
+    pub owner_node: String,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -67,15 +90,29 @@ pub struct NFTokenOffer {
     pub amount: Value,
     pub destination: Option<String>,
     pub expiration: Option<u32>,
-    pub ledger_entry_type: String,
     #[serde(rename = "NFTokenID")]
     pub nftoken_id: String,
     #[serde(rename = "NFTokenOfferNode")]
     pub nftoken_offer_node: String,
     pub owner: String,
     pub owner_node: String,
+    #[serde(rename = "PreviousTxnID")]
     pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
     pub previous_txn_lgr_seq: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct NFTokenPage {
+    pub next_page_min: Option<String>,
+    pub previous_page_min: Option<String>,
+    #[serde(rename = "NFTokens")]
+    pub nftokens: Value,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: Option<String>,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,9 +126,11 @@ pub struct Offer {
     pub book_directory: String,
     pub book_node: String,
     pub owner_node: String,
-    pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
     pub expiration: Option<i64>,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,26 +143,36 @@ pub struct PaymentChannel {
     pub public_key: String,
     pub settle_delay: i64,
     pub owner_node: String,
-    pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
     pub flags: i64,
     pub expiration: Option<i64>,
     pub cancel_after: Option<i64>,
     pub source_tag: Option<i64>,
-    pub detination_tag: Option<i64>,
-    pub destination_node: Option<String>,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct SignerList {
-    pub flags: i64,
-    pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
     pub owner_node: String,
-    // pub signer_entries: SignerEntry[]
-    pub signer_list_id: i64,
-    pub signer_quorum: i64,
+    pub signer_entries: Vec<SignerEntry>,
+    #[serde(rename = "SignerListID")]
+    pub signer_list_id: u32,
+    pub signer_quorum: u32,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SignerEntry {
+    pub account: String,
+    pub signer_weight: u16,
+    pub wallet_locator: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,9 +181,11 @@ pub struct Ticket {
     pub account: String,
     pub flags: i64,
     pub owner_node: String,
-    pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
     pub ticket_sequence: i64,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -144,12 +195,16 @@ pub struct RippleState {
     pub balance: Value,
     pub low_limit: Value,
     pub high_limit: Value,
-    pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
-    pub low_node: Option<String>,
-    pub high_node: Option<String>,
+    pub low_node: String,
+    pub high_node: String,
     pub low_quality_in: Option<i64>,
     pub low_quality_out: Option<i64>,
     pub high_quality_in: Option<i64>,
     pub high_quality_out: Option<i64>,
+    #[serde(rename = "index")]
+    pub index: String,
+    #[serde(rename = "PreviousTxnID")]
+    pub previous_txn_id: String,
+    #[serde(rename = "PreviousTxnLgrSeq")]
+    pub previous_txn_lgr_seq: i64,
 }

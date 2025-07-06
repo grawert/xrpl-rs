@@ -12,7 +12,7 @@ pub struct AccountOffersRequest {
     pub account: String,
     pub ledger_hash: Option<String>,
     pub ledger_index: i64,
-    pub limit: Option<i64>,
+    pub limit: Option<u32>,
     pub marker: Option<Value>,
 }
 

@@ -12,7 +12,7 @@ pub struct AccountLinesRequest {
     pub ingnore_default: Option<bool>,
     pub ledger_hash: Option<String>,
     pub ledger_index: Option<String>,
-    pub limit: Option<i64>,
+    pub limit: Option<u32>,
     pub marker: Option<Value>,
     pub peer: Option<String>,
 }
@@ -43,7 +43,7 @@ pub struct AccountLinesResult {
     pub ledger_index: Option<i64>,
     pub ledger_hash: Option<String>,
     pub marker: Option<Value>,
-    pub limit: Option<i64>,
+    pub limit: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]

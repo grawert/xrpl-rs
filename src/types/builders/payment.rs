@@ -29,7 +29,7 @@ pub type PaymentBuilder = TransactionBuilder<Payment>;
 ///     account.into(),
 ///     destination.into(),
 ///     sequence.into(),
-///     Amount::drops("10"),
+///     drops!(10),
 ///     1.99.into(),
 /// )
 /// .with_destination_tag(destination_tag)
