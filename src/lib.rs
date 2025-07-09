@@ -20,7 +20,6 @@ pub struct XrplClient {
 impl XrplClient {
     pub async fn new(url: &str) -> Result<XrplClient, XrplError> {
         let socket = XrplSocket::new(url, None).await?;
-
         Ok(XrplClient { url: url.into(), socket })
     }
 
@@ -66,7 +65,6 @@ impl XrplClient {
             .map_err(|e| XrplError::ParseError(e.to_string()))?;
 
         let receiver = self.socket.subscribe::<T>().await?;
-
         Ok((response, receiver))
     }
 

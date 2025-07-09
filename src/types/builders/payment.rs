@@ -28,7 +28,7 @@ pub type PaymentBuilder = TransactionBuilder<Payment>;
 /// let payment = PaymentBuilder::new(
 ///     account.clone().into(),
 ///     destination.into(),
-///     Amount::Xrpl(amount.to_string()),
+///     1.99.into(),
 /// )
 /// .with_sequence(sequence)
 /// .with_fee(fee.to_string())
