@@ -16,39 +16,54 @@ impl Default for Amount {
 }
 
 impl Amount {
-    pub fn xrp<T: Into<String>>(value: T) -> Self {
-        let value_str = value.into();
+    pub fn xrp<T: Into<String>>(value: T) -> Result<Self, String> {
+        let value = value.into();
 
-        if let Ok(xrp_amount) = value_str.parse::<f64>() {
-            let drops = (xrp_amount * 1_000_000.0).round() as u64;
-            Amount::Xrpl(drops.to_string())
-        } else {
-            Amount::Xrpl(value_str)
+        match value.parse::<f64>() {
+            Ok(xrp) => {
+                let drops = (xrp * 1_000_000.0).round() as u64;
+                Amount::drops(drops.to_string())
+            }
+            Err(_) => Err(format!("Failed to parse '{}' as a number", value)),
         }
     }
 
-    pub fn xrp_from_decimal(xrp_amount: f64) -> Self {
-        Amount::from(xrp_amount)
+    pub fn drops<T: Into<String>>(value: T) -> Result<Self, String> {
+        Ok(Amount::Xrpl(value.into()))
     }
 
-    pub fn drops(drops: u64) -> Self {
-        Amount::from(drops)
+    fn xrp_infallible(xrp_amount: f64) -> Self {
+        let drops = (xrp_amount * 1_000_000.0).round() as u64;
+        Amount::drops_infallible(drops.to_string())
     }
 
-    pub fn issued_currency<V, C, I>(value: V, currency: C, issuer: I) -> Self
+    fn drops_infallible<T: Into<String>>(value: T) -> Self {
+        Amount::Xrpl(value.into())
+    }
+
+    pub fn issued_currency<V, C, I>(
+        value: V,
+        currency: C,
+        issuer: I,
+    ) -> Result<Self, String>
     where
         V: Into<String>,
         C: Into<String>,
         I: Into<String>,
     {
-        Amount::IssuedCurrency {
-            value: value.into(),
+        let value = value.into();
+        if value.parse::<f64>().is_err() {
+            return Err(format!("Invalid currency value: '{}'", value));
+        }
+
+        Ok(Amount::IssuedCurrency {
+            value: value,
             currency: currency.into(),
             issuer: issuer.into(),
-        }
+        })
     }
 
-    pub fn issued_currency_decimal<C, I>(
+    pub fn issued_currency_infallible<C, I>(
         value: f64,
         currency: C,
         issuer: I,
@@ -98,38 +113,19 @@ impl Amount {
 
 impl From<u64> for Amount {
     fn from(drops: u64) -> Self {
-        Amount::Xrpl(drops.to_string())
+        Amount::drops_infallible(drops.to_string())
     }
 }
 
 impl From<i64> for Amount {
     fn from(drops: i64) -> Self {
-        Amount::Xrpl(drops.to_string())
+        Amount::drops_infallible(drops.to_string())
     }
 }
 
 impl From<f64> for Amount {
     fn from(xrp_amount: f64) -> Self {
-        let drops = (xrp_amount * 1_000_000.0).round() as u64;
-        Amount::Xrpl(drops.to_string())
-    }
-}
-
-impl From<f32> for Amount {
-    fn from(xrp_amount: f32) -> Self {
-        Amount::from(xrp_amount as f64)
-    }
-}
-
-impl From<&str> for Amount {
-    fn from(value: &str) -> Self {
-        Amount::Xrpl(value.to_string())
-    }
-}
-
-impl From<String> for Amount {
-    fn from(value: String) -> Self {
-        Amount::Xrpl(value)
+        Amount::xrp_infallible(xrp_amount)
     }
 }
 
@@ -205,30 +201,23 @@ impl TryFrom<Amount> for f64 {
 }
 
 #[macro_export]
-macro_rules! xrp {
+macro_rules! drops {
     ($amount:expr) => {
-        Amount::xrp($amount)
+        Amount::from($amount as u64)
     };
 }
 
 #[macro_export]
-macro_rules! xrp_decimal {
+macro_rules! xrp {
     ($amount:expr) => {
-        Amount::xrp_from_decimal($amount)
+        Amount::from($amount as f64)
     };
 }
 
 #[macro_export]
 macro_rules! issued {
     ($value:expr, $currency:expr, $issuer:expr) => {
-        Amount::issued_currency($value, $currency, $issuer)
-    };
-}
-
-#[macro_export]
-macro_rules! issued_decimal {
-    ($value:expr, $currency:expr, $issuer:expr) => {
-        Amount::issued_currency_decimal($value, $currency, $issuer)
+        Amount::issued_currency_infallible($value, $currency, $issuer)
     };
 }
 
@@ -238,19 +227,19 @@ mod tests {
 
     #[test]
     fn test_conversions() {
-        let amount1 = Amount::from(1000000u64);
-        let amount2 = Amount::xrp("1");
-        let amount3 = xrp!("1");
-        let amount4: Amount = "1000000".into();
+        let amount1 = Amount::from(1000000i64);
+        let amount2 = Amount::xrp("1").unwrap();
+        let amount3 = xrp!(1.0);
+        let amount4 = drops!(1000000);
 
         assert_eq!(amount1, amount2);
         assert_eq!(amount2, amount3);
         assert_eq!(amount1, amount4);
 
         let amount5 = Amount::from(1.0f64);
-        let amount6 = Amount::xrp_from_decimal(1.0);
-        let amount7 = xrp_decimal!(1.0);
-        let amount8 = Amount::drops(1000000u64);
+        let amount6 = xrp!(1.0);
+        let amount7 = xrp!(1.0);
+        let amount8 = Amount::drops("1000000").unwrap();
 
         assert_eq!(amount1, amount5);
         assert_eq!(amount5, amount6);
@@ -268,19 +257,11 @@ mod tests {
             "100.5",
             "USD",
             "rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-        );
-        let usd2 = issued!("100.5", "USD", "rXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-        let usd3 = Amount::issued_currency_decimal(
-            100.5,
-            "USD",
-            "rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-        );
-        let usd4 =
-            issued_decimal!(100.5, "USD", "rXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+        )
+        .unwrap();
+        let usd2 = issued!(100.5, "USD", "rXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
 
         assert_eq!(usd, usd2);
-        assert_eq!(usd.value(), usd3.value());
-        assert_eq!(usd3.value(), usd4.value());
 
         assert_eq!(amount1.value(), "1000000");
         assert_eq!(amount1.currency(), "XRP");

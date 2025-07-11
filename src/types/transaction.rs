@@ -9,14 +9,14 @@ use super::Amount;
 pub struct Transaction {
     pub account: String,
     pub account_txn_id: Option<String>,
-    pub fee: Option<String>,
-    pub flags: Option<u32>,
-    pub last_ledger_sequence: Option<u32>,
+    pub fee: Amount,
+    pub flags: Option<i32>,
+    pub last_ledger_sequence: Option<i32>,
     pub memos: Option<Vec<MemoWrapper>>,
-    pub sequence: Option<u32>,
+    pub sequence: i32,
     pub signers: Option<Vec<SignerWrapper>>,
-    pub source_tag: Option<u32>,
-    pub ticket_sequence: Option<u32>,
+    pub source_tag: Option<i32>,
+    pub ticket_sequence: Option<i32>,
 
     // set during singing process
     pub signing_pub_key: Option<String>,
@@ -78,7 +78,7 @@ pub enum TransactionType {
         taker_pays: Amount,
     },
     Payment {
-        amount: Option<Amount>,
+        amount: Amount,
         deliver_max: Option<Amount>,
         deliver_min: Option<Amount>,
         destination: String,

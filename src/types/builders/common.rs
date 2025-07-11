@@ -1,13 +1,12 @@
 use crate::types::{
-    Memo, MemoWrapper, Signer, SignerWrapper, Transaction, TransactionType,
+    Amount, Memo, MemoWrapper, Signer, SignerWrapper, Transaction,
+    TransactionType,
 };
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
-    #[error("Fee is required")]
-    MissingFee,
-    #[error("Sequence number is required")]
-    MissingSequence,
+    #[error("Fee must be in XRP")]
+    FeeNotXRP,
     #[error("Account cannot be empty")]
     EmptyAccount,
     #[error("Invalid amount: {0}")]
@@ -20,15 +19,15 @@ pub enum BuildError {
 
 pub struct TransactionBuilder<T> {
     account: String,
+    fee: Amount,
+    sequence: i32,
     account_txn_id: Option<String>,
-    fee: Option<String>,
-    flags: Option<u32>,
-    last_ledger_sequence: Option<u32>,
+    flags: Option<i32>,
+    last_ledger_sequence: Option<i32>,
     memos: Option<Vec<MemoWrapper>>,
-    sequence: Option<u32>,
     signers: Option<Vec<SignerWrapper>>,
-    source_tag: Option<u32>,
-    ticket_sequence: Option<u32>,
+    source_tag: Option<i32>,
+    ticket_sequence: Option<i32>,
     pub(crate) transaction_type: T,
 }
 
@@ -44,15 +43,20 @@ pub trait TransactionTypeBuilder {
 impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
     TransactionBuilder<T>
 {
-    pub fn init(account: String, transaction_type: T) -> Self {
+    pub fn init(
+        account: String,
+        sequence: i32,
+        fee: Amount,
+        transaction_type: T,
+    ) -> Self {
         Self {
             account,
             account_txn_id: None,
-            fee: None,
+            fee,
             flags: None,
             last_ledger_sequence: None,
             memos: None,
-            sequence: None,
+            sequence,
             signers: None,
             source_tag: None,
             ticket_sequence: None,
@@ -60,22 +64,12 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
         }
     }
 
-    pub fn with_sequence(mut self, sequence: u32) -> Self {
-        self.sequence = Some(sequence);
-        self
-    }
-
-    pub fn with_fee(mut self, fee: impl Into<String>) -> Self {
-        self.fee = Some(fee.into());
-        self
-    }
-
-    pub fn with_flags(mut self, flags: u32) -> Self {
+    pub fn with_flags(mut self, flags: i32) -> Self {
         self.flags = Some(flags);
         self
     }
 
-    pub fn with_last_ledger_sequence(mut self, sequence: u32) -> Self {
+    pub fn with_last_ledger_sequence(mut self, sequence: i32) -> Self {
         self.last_ledger_sequence = Some(sequence);
         self
     }
@@ -96,12 +90,12 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
         self
     }
 
-    pub fn with_source_tag(mut self, tag: u32) -> Self {
+    pub fn with_source_tag(mut self, tag: i32) -> Self {
         self.source_tag = Some(tag);
         self
     }
 
-    pub fn with_ticket_sequence(mut self, sequence: u32) -> Self {
+    pub fn with_ticket_sequence(mut self, sequence: i32) -> Self {
         self.ticket_sequence = Some(sequence);
         self
     }
@@ -112,6 +106,7 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
     }
 
     pub fn build(self) -> Result<Transaction, BuildError> {
+        validate_fee(&self.fee)?;
         validate_account(&self.account)?;
         self.transaction_type.validate()?;
         let transaction_type =
@@ -133,6 +128,13 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
             hash: None,
             transaction_type,
         })
+    }
+}
+
+fn validate_fee(fee: &Amount) -> Result<(), BuildError> {
+    match fee {
+        Amount::Xrpl(..) => Ok(()),
+        Amount::IssuedCurrency { .. } => Err(BuildError::FeeNotXRP),
     }
 }
 
