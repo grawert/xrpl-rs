@@ -4,6 +4,8 @@ use serde_json::{json, Value};
 use crate::types::Transaction;
 use crate::request::{XrplRequest, XrplResponse, XrplSubscription};
 
+const API_VERSION: u32 = 2;
+
 #[derive(Serialize)]
 pub struct AccountTransactionsSubscription {
     #[serde(skip_serializing)]
@@ -34,7 +36,8 @@ impl From<AccountTransactionsSubscription> for Value {
         json!({
             "id": id,
             "command": "subscribe",
-            "accounts": val.accounts
+            "accounts": val.accounts,
+            "api_version": API_VERSION
         })
     }
 }
@@ -53,16 +56,16 @@ impl XrplSubscription for AccountTransactionsSubscription {
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountTransactionMessage {
     pub close_time_iso: Option<String>,
+    #[serde(rename = "type")]
+    pub kind: String,
     pub engine_result: String,
     pub engine_result_code: i32,
     pub engine_result_message: String,
+    pub hash: String,
     pub ledger_hash: Option<String>,
-    pub ledger_index: Option<i64>,
+    pub ledger_index: Option<u32>,
     pub meta: Option<TransactionMeta>,
-    pub status: String,
-    pub transaction: Transaction,
-    #[serde(rename = "type")]
-    pub kind: String,
+    pub tx_json: Transaction,
     pub validated: bool,
 }
 
@@ -70,7 +73,7 @@ pub struct AccountTransactionMessage {
 #[serde(rename_all = "PascalCase")]
 pub struct TransactionMeta {
     pub affected_nodes: Vec<Value>,
-    pub transaction_index: i32,
+    pub transaction_index: u32,
     pub transaction_result: String,
     #[serde(rename = "delivered_amount")]
     pub delivered_amount: Option<Value>,
@@ -118,7 +121,7 @@ impl XrplRequest for AccountTransactionsUnsubscription {
 #[derive(Debug, Deserialize)]
 pub struct UnsubscribeResponse {}
 
-#[derive(Serialize)]
+#[derive(Default, Serialize)]
 pub struct LedgerClosedUnsubscription {
     #[serde(skip_serializing)]
     pub id: Option<String>,

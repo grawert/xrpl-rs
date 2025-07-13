@@ -6,8 +6,7 @@ use crate::types::{Amount, PathStep, TransactionType};
 
 pub struct Payment {
     pub destination: String,
-    pub amount: Amount,
-    pub deliver_max: Option<Amount>,
+    pub deliver_max: Amount,
     pub deliver_min: Option<Amount>,
     pub destination_tag: Option<u32>,
     pub invoice_id: Option<String>,
@@ -40,9 +39,9 @@ impl PaymentBuilder {
     pub fn new(
         account: String,
         destination: String,
-        sequence: i32,
+        sequence: u32,
         fee: Amount,
-        amount: Amount,
+        deliver_max: Amount,
     ) -> Self {
         Self::init(
             account,
@@ -50,8 +49,7 @@ impl PaymentBuilder {
             fee,
             Payment {
                 destination,
-                amount,
-                deliver_max: None,
+                deliver_max,
                 deliver_min: None,
                 destination_tag: None,
                 invoice_id: None,
@@ -91,8 +89,8 @@ impl TransactionTypeBuilder for Payment {
     type TransactionType = TransactionType;
 
     fn validate(&self) -> Result<(), BuildError> {
+        validate_amount(&self.deliver_max)?;
         validate_destination(&self.destination)?;
-        validate_amount(&self.amount)?;
 
         Ok(())
     }
@@ -101,8 +99,8 @@ impl TransactionTypeBuilder for Payment {
         self,
     ) -> Result<Self::TransactionType, BuildError> {
         Ok(TransactionType::Payment {
-            amount: self.amount,
-            deliver_max: self.deliver_max,
+            amount: Some(self.deliver_max),
+            deliver_max: None,
             deliver_min: self.deliver_min,
             destination: self.destination,
             destination_tag: self.destination_tag,
@@ -176,7 +174,7 @@ mod tests {
     use super::*;
     use crate::types::Memo;
 
-    const SEQUENCE: i32 = 1;
+    const SEQUENCE: u32 = 1;
 
     #[test]
     fn test_payment_builder_basic() {
@@ -192,13 +190,13 @@ mod tests {
 
         assert_eq!(payment.account, "rAccount123");
         assert_eq!(payment.sequence, 1);
-        assert_eq!(payment.fee, drops!(10));
+        assert_eq!(payment.fee, "10");
 
         if let TransactionType::Payment { destination, amount, .. } =
             payment.transaction_type
         {
             assert_eq!(destination, "rDestination456");
-            assert_eq!(amount, Amount::Xrpl("1000000".to_string()));
+            assert_eq!(amount, Some(Amount::Xrpl("1000000".to_string())));
         } else {
             panic!("Expected Payment transaction type");
         }
@@ -295,13 +293,15 @@ mod tests {
 
         assert_eq!(payment.account, "rAccount123");
         assert_eq!(payment.sequence, 1);
-        assert_eq!(payment.fee, drops!(10));
+        assert_eq!(payment.fee, "10");
 
         if let TransactionType::Payment { destination, amount, .. } =
             payment.transaction_type
         {
             assert_eq!(destination, "rDestination456");
-            if let Amount::IssuedCurrency { value, currency, issuer } = amount {
+            if let Some(Amount::IssuedCurrency { value, currency, issuer }) =
+                amount
+            {
                 assert_eq!(value, "100.50");
                 assert_eq!(currency, "USD");
                 assert_eq!(issuer, "rTrust1234567890123456789012345");

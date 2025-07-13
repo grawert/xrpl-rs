@@ -49,6 +49,7 @@ pub enum XrplResponse<T> {
 }
 
 impl<T> XrplResponse<T> {
+    #[allow(clippy::result_large_err)]
     pub fn result(self) -> Result<T, XrplError> {
         match self {
             XrplResponse::Success { result, .. } => Ok(result),

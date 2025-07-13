@@ -20,14 +20,14 @@ pub enum BuildError {
 pub struct TransactionBuilder<T> {
     account: String,
     fee: Amount,
-    sequence: i32,
+    sequence: u32,
     account_txn_id: Option<String>,
-    flags: Option<i32>,
-    last_ledger_sequence: Option<i32>,
+    flags: Option<u32>,
+    last_ledger_sequence: Option<u32>,
     memos: Option<Vec<MemoWrapper>>,
     signers: Option<Vec<SignerWrapper>>,
-    source_tag: Option<i32>,
-    ticket_sequence: Option<i32>,
+    source_tag: Option<u32>,
+    ticket_sequence: Option<u32>,
     pub(crate) transaction_type: T,
 }
 
@@ -45,7 +45,7 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
 {
     pub fn init(
         account: String,
-        sequence: i32,
+        sequence: u32,
         fee: Amount,
         transaction_type: T,
     ) -> Self {
@@ -64,12 +64,12 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
         }
     }
 
-    pub fn with_flags(mut self, flags: i32) -> Self {
+    pub fn with_flags(mut self, flags: u32) -> Self {
         self.flags = Some(flags);
         self
     }
 
-    pub fn with_last_ledger_sequence(mut self, sequence: i32) -> Self {
+    pub fn with_last_ledger_sequence(mut self, sequence: u32) -> Self {
         self.last_ledger_sequence = Some(sequence);
         self
     }
@@ -90,12 +90,12 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
         self
     }
 
-    pub fn with_source_tag(mut self, tag: i32) -> Self {
+    pub fn with_source_tag(mut self, tag: u32) -> Self {
         self.source_tag = Some(tag);
         self
     }
 
-    pub fn with_ticket_sequence(mut self, sequence: i32) -> Self {
+    pub fn with_ticket_sequence(mut self, sequence: u32) -> Self {
         self.ticket_sequence = Some(sequence);
         self
     }
@@ -115,7 +115,7 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
         Ok(Transaction {
             account: self.account,
             account_txn_id: self.account_txn_id,
-            fee: self.fee,
+            fee: self.fee.to_string(),
             flags: self.flags,
             last_ledger_sequence: self.last_ledger_sequence,
             memos: self.memos,

@@ -37,8 +37,8 @@ impl XrplRequest for AccountInfoRequest {
 pub struct AccountInfoResult {
     pub account_data: AccountRoot,
     pub signer_lists: Option<Vec<String>>,
-    pub ledger_current_index: Option<i64>,
-    pub ledger_index: Option<i64>,
+    pub ledger_current_index: Option<u32>,
+    pub ledger_index: Option<u32>,
     pub queue_data: Option<String>,
     pub validated: Option<bool>,
 }
@@ -48,23 +48,23 @@ pub struct AccountInfoResult {
 pub struct AccountRoot {
     pub account: String,
     pub balance: String,
-    pub flags: i64,
+    pub flags: u32,
     pub ledger_entry_type: String,
-    pub owner_count: i64,
+    pub owner_count: u32,
     #[serde(rename = "PreviousTxnID")]
     pub previous_txn_id: String,
-    pub previous_txn_lgr_seq: i64,
-    pub sequence: i64,
+    pub previous_txn_lgr_seq: u32,
+    pub sequence: u32,
     #[serde(rename = "index")]
     pub index: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct QueueData {
-    pub txn_count: i64,
+    pub txn_count: u32,
     pub auth_change_queued: Option<bool>,
-    pub lowest_sequence: Option<i64>,
-    pub highest_sequence: Option<i64>,
+    pub lowest_sequence: Option<u32>,
+    pub highest_sequence: Option<u32>,
     pub max_spend_drops_total: Option<String>,
     pub transactions: Option<Vec<QueueTransaction>>,
 }
@@ -75,5 +75,5 @@ pub struct QueueTransaction {
     pub fee: String,
     pub fee_level: String,
     pub max_spend_drops: String,
-    pub seq: i64,
+    pub seq: u32,
 }

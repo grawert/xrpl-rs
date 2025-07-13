@@ -59,11 +59,9 @@ impl XrplClient {
         subscription: T,
     ) -> Result<(T::Response, broadcast::Receiver<T::Message>), XrplError> {
         let subscription_value: Value = subscription.into();
-
         let response = self.call(subscription_value).await?;
         let response = serde_json::from_str::<T::Response>(&response)
             .map_err(|e| XrplError::ParseError(e.to_string()))?;
-
         let receiver = self.socket.subscribe::<T>().await?;
         Ok((response, receiver))
     }

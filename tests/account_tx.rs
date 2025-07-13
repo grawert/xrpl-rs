@@ -19,7 +19,7 @@ async fn test_account_tx() {
     let response = client.request(request).await.unwrap();
     let result =
         response.result().expect("Expected account currencies in response");
-    let tx= &result.transactions;
+    let tx = &result.transactions;
 
     assert!(tx.len() > 0);
 }

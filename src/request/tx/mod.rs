@@ -14,8 +14,8 @@ pub struct TxRequest {
     pub ctid: Option<String>,
     pub transaction: Option<String>,
     pub binary: Option<bool>,
-    pub min_ledger: Option<i64>,
-    pub max_ledger: Option<i64>,
+    pub min_ledger: Option<u32>,
+    pub max_ledger: Option<u32>,
 }
 
 impl From<TxRequest> for Value {
@@ -42,7 +42,7 @@ pub struct TxResponse {
     pub ctid: String,
     pub hash: String,
     pub ledger_hash: String,
-    pub ledger_index: i64,
+    pub ledger_index: u32,
     pub meta: Value,
     pub tx_json: Transaction,
     pub validated: bool,

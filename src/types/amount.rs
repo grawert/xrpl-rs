@@ -37,8 +37,8 @@ impl Amount {
         Amount::drops_infallible(drops.to_string())
     }
 
-    fn drops_infallible<T: Into<String>>(value: T) -> Self {
-        Amount::Xrpl(value.into())
+    fn drops_infallible<T: ToString>(value: T) -> Self {
+        Amount::Xrpl(value.to_string())
     }
 
     pub fn issued_currency<V, C, I>(
@@ -57,7 +57,7 @@ impl Amount {
         }
 
         Ok(Amount::IssuedCurrency {
-            value: value,
+            value,
             currency: currency.into(),
             issuer: issuer.into(),
         })
@@ -111,6 +111,12 @@ impl Amount {
     }
 }
 
+impl From<f64> for Amount {
+    fn from(xrp: f64) -> Self {
+        Amount::xrp_infallible(xrp)
+    }
+}
+
 impl From<u64> for Amount {
     fn from(drops: u64) -> Self {
         Amount::drops_infallible(drops.to_string())
@@ -120,12 +126,6 @@ impl From<u64> for Amount {
 impl From<i64> for Amount {
     fn from(drops: i64) -> Self {
         Amount::drops_infallible(drops.to_string())
-    }
-}
-
-impl From<f64> for Amount {
-    fn from(xrp_amount: f64) -> Self {
-        Amount::xrp_infallible(xrp_amount)
     }
 }
 
@@ -144,26 +144,8 @@ impl FromStr for Amount {
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Amount::Xrpl(value) => {
-                if let Ok(drops) = value.parse::<u64>() {
-                    write!(f, "{:.6} XRP", drops as f64 / 1_000_000.0)
-                } else {
-                    write!(f, "{} XRP", value)
-                }
-            }
-            Amount::IssuedCurrency { value, currency, issuer } => {
-                write!(
-                    f,
-                    "{} {} ({})",
-                    value,
-                    currency,
-                    if issuer.len() > 8 {
-                        format!("{}...", &issuer[..8])
-                    } else {
-                        issuer.clone()
-                    }
-                )
-            }
+            Amount::Xrpl(value) => write!(f, "{}", value),
+            Amount::IssuedCurrency { value, .. } => write!(f, "{}", value),
         }
     }
 }
@@ -201,16 +183,16 @@ impl TryFrom<Amount> for f64 {
 }
 
 #[macro_export]
-macro_rules! drops {
+macro_rules! xrp {
     ($amount:expr) => {
-        Amount::from($amount as u64)
+        Amount::from($amount as f64)
     };
 }
 
 #[macro_export]
-macro_rules! xrp {
+macro_rules! drops {
     ($amount:expr) => {
-        Amount::from($amount as f64)
+        Amount::from($amount as u64)
     };
 }
 
@@ -229,8 +211,8 @@ mod tests {
     fn test_conversions() {
         let amount1 = Amount::from(1000000i64);
         let amount2 = Amount::from(1.0f64);
-        let amount3 = Amount::drops("1000000").unwrap();
-        let amount4 = Amount::xrp("1").unwrap();
+        let amount3 = Amount::xrp("1").unwrap();
+        let amount4 = Amount::drops("1000000").unwrap();
         let amount5 = xrp!(1.0);
         let amount6 = drops!(1000000);
 

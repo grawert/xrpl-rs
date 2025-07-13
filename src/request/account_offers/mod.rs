@@ -11,7 +11,7 @@ use crate::types::Amount;
 pub struct AccountOffersRequest {
     pub account: String,
     pub ledger_hash: Option<String>,
-    pub ledger_index: i64,
+    pub ledger_index: u32,
     pub limit: Option<u32>,
     pub marker: Option<Value>,
 }
@@ -37,8 +37,8 @@ impl XrplRequest for AccountOffersRequest {
 pub struct AccountOffersResponse {
     pub account: String,
     pub offers: Vec<AccountOffer>,
-    pub ledger_current_index: Option<i64>,
-    pub ledger_index: Option<i64>,
+    pub ledger_current_index: Option<u32>,
+    pub ledger_index: Option<u32>,
     pub ledger_hash: Option<String>,
     pub marker: Option<Value>,
 }
@@ -46,10 +46,10 @@ pub struct AccountOffersResponse {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AccountOffer {
-    pub flags: i64,
-    pub seq: i64,
+    pub flags: u32,
+    pub seq: u32,
     pub taker_gets: Amount,
     pub taker_pays: Amount,
     pub quality: String,
-    pub expiration: Option<i64>,
+    pub expiration: Option<u64>,
 }

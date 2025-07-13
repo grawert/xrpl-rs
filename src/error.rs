@@ -3,7 +3,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum XrplError {
     #[error("XRPL API returned error: {error}: {}",
-        error_message.as_ref().map(|msg| format!("{}", msg))
+        error_message.as_ref().map(|msg| msg.to_string())
         .unwrap_or_default())]
     ApiError { error: String, error_message: Option<String> },
     #[error("Failed to parse XRPL response: {0}")]

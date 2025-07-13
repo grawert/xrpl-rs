@@ -17,7 +17,7 @@ pub struct AccountObjectsRequest {
     pub ledger_index: Option<String>,
     pub limit: Option<u32>,
     pub marker: Option<Value>,
-    pub transfer_rate: Option<i64>,
+    pub transfer_rate: Option<u32>,
     #[serde(rename = "type")]
     pub kind: Option<AccountObjectRequestType>,
 }
@@ -60,8 +60,8 @@ pub struct AccountObjectsResult {
     pub account: String,
     pub account_objects: Vec<AccountObject>,
     pub ledger_hash: Option<String>,
-    pub ledger_index: Option<i64>,
-    pub ledger_current_index: Option<i64>,
+    pub ledger_index: Option<u32>,
+    pub ledger_current_index: Option<u32>,
     pub limit: Option<u32>,
     pub marker: Option<Value>,
     pub validated: bool,

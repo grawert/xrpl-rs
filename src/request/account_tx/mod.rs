@@ -12,10 +12,10 @@ const API_VERSION: u32 = 2;
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct AccountTxRequest {
     pub account: String,
-    pub ledger_index_min: Option<i64>,
-    pub ledger_index_max: Option<i64>,
+    pub ledger_index_min: Option<u32>,
+    pub ledger_index_max: Option<u32>,
     pub ledger_hash: Option<String>,
-    pub ledger_index: Option<i64>,
+    pub ledger_index: Option<u32>,
     pub binary: Option<bool>,
     pub forward: Option<bool>,
     pub limit: Option<u32>,
@@ -43,8 +43,8 @@ impl XrplRequest for AccountTxRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountTxResponse {
     pub account: String,
-    pub ledger_index_min: i64,
-    pub ledger_index_max: i64,
+    pub ledger_index_min: u32,
+    pub ledger_index_max: u32,
     pub marker: Option<Value>,
     pub transactions: Vec<AccountTransaction>,
     pub validated: Option<bool>,

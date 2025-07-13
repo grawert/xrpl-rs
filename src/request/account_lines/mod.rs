@@ -39,8 +39,8 @@ impl XrplRequest for AccountLinesRequest {
 pub struct AccountLinesResult {
     pub account: String,
     pub lines: Vec<Trustline>,
-    pub ledger_current_index: Option<i64>,
-    pub ledger_index: Option<i64>,
+    pub ledger_current_index: Option<u32>,
+    pub ledger_index: Option<u32>,
     pub ledger_hash: Option<String>,
     pub marker: Option<Value>,
     pub limit: Option<u32>,

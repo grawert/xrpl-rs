@@ -1,3 +1,5 @@
+#![allow(clippy::large_enum_variant)]
+
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -9,14 +11,14 @@ use super::Amount;
 pub struct Transaction {
     pub account: String,
     pub account_txn_id: Option<String>,
-    pub fee: Amount,
-    pub flags: Option<i32>,
-    pub last_ledger_sequence: Option<i32>,
+    pub fee: String,
+    pub flags: Option<u32>,
+    pub last_ledger_sequence: Option<u32>,
     pub memos: Option<Vec<MemoWrapper>>,
-    pub sequence: i32,
+    pub sequence: u32,
     pub signers: Option<Vec<SignerWrapper>>,
-    pub source_tag: Option<i32>,
-    pub ticket_sequence: Option<i32>,
+    pub source_tag: Option<u32>,
+    pub ticket_sequence: Option<u32>,
 
     // set during singing process
     pub signing_pub_key: Option<String>,
@@ -78,7 +80,7 @@ pub enum TransactionType {
         taker_pays: Amount,
     },
     Payment {
-        amount: Amount,
+        amount: Option<Amount>,
         deliver_max: Option<Amount>,
         deliver_min: Option<Amount>,
         destination: String,
@@ -146,44 +148,45 @@ pub struct PathStep {
 /// impl SigningContext for Wallet {
 ///     type Error = anyhow::Error;
 ///
-///     fn sign_transaction(&self, tx: &Transaction) -> Result<String, Self::Error> {
-///         // 1. Convert to JSON and add public key
-///         let mut tx_json: serde_json::Value = tx.into();
+///     fn sign_transaction(
+///         &self,
+///         tx: &Transaction,
+///     ) -> Result<String, Self::Error> {
+///         let mut tx_json: serde_json::Value = serde_json::to_value(&tx)
+///             .expect("Failed to convert transaction to json");
 ///         tx_json["SigningPubKey"] = self.public_key.to_string().into();
-///
-///         // 2. Serialize for signing
 ///         let json_str = serde_json::to_string(&tx_json)?;
+///
 ///         let tx_hex = serialize_tx(json_str, true).ok_or_else(|| {
-///             anyhow::anyhow!("Failed to serialize transaction for signing")
+///             anyhow!("Failed to serialize transaction for signing")
 ///         })?;
 ///
-///         // 3. Create signing blob with XRPL STX prefix
 ///         let signing_hex = format!("{}{}", STX_PREFIX, tx_hex);
 ///         let signing_bytes = hex::decode(&signing_hex)?;
-///
-///         // 4. Sign the full signing blob
 ///         let signature = self.private_key.sign(&signing_bytes);
-///         tx_json["TxnSignature"] = signature.to_string().into();
 ///
-///         // 5. Serialize final signed transaction
+///         tx_json["TxnSignature"] = signature.to_string().into();
 ///         let final_json = serde_json::to_string(&tx_json)?;
-///         let final_bytes = serialize_tx(final_json, false).ok_or_else(|| {
-///             anyhow::anyhow!("Failed to serialize final transaction")
+///
+///         let tx_signed = serialize_tx(final_json, false).ok_or_else(|| {
+///             anyhow!("Failed to serialize transaction for signing")
 ///         })?;
-///         Ok(final_bytes)
+///         Ok(tx_signed)
 ///     }
 /// }
 ///
 /// // Usage:
 /// let wallet = Wallet::from_seed("sSecret...")?;
+///
 /// let payment = PaymentBuilder::new(
-///        account.clone().into(),
-///        destination.into(),
-///        Amount::Xrpl(amount.to_string()),
-///    )
-///    .with_sequence(sequence)
-///    .with_fee(fee.to_string())
-///    .build()?;
+///     wallet.public_key.derive_address().into(),
+///     destination_address.into(),
+///     sequence.into(),
+///     drops!(10),
+///     xrp!(1.99),
+/// )
+/// .build()
+/// .expect("Create payment failed");
 ///
 /// let signed_blob = payment.sign_with(&wallet)?;
 /// let submit_request = SubmitRequest {

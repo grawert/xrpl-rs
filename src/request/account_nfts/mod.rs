@@ -37,8 +37,8 @@ pub struct AccountNftsResult {
     pub account: String,
     pub account_nfts: Vec<AccountNFToken>,
     pub ledger_hash: Option<String>,
-    pub ledger_index: i64,
-    pub ledger_current_index: Option<i64>,
+    pub ledger_index: u32,
+    pub ledger_current_index: Option<u32>,
     pub validated: Option<bool>,
     pub marker: Option<Value>,
 }
@@ -51,9 +51,9 @@ pub struct AccountNFToken {
     #[serde(rename = "NFTokenID")]
     pub nftoken_id: String,
     #[serde(rename = "NFTokenTaxon")]
-    pub nftoken_taxon: i64,
+    pub nftoken_taxon: u32,
     #[serde(rename = "URI")]
     pub uri: Option<String>,
     #[serde(rename = "nft_serial")]
-    pub nft_serial: i64,
+    pub nft_serial: u32,
 }

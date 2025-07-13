@@ -33,7 +33,7 @@ impl XrplRequest for AccountCurrenciesRequest {
 #[derive(Debug, Deserialize)]
 pub struct AccountCurrenciesResult {
     pub ledger_hash: Option<String>,
-    pub ledger_index: Option<i64>,
+    pub ledger_index: Option<u32>,
     pub receive_currencies: Vec<String>,
     pub send_currencies: Vec<String>,
     pub validated: bool,
