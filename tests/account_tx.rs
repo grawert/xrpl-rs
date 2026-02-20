@@ -1,7 +1,7 @@
 mod common;
 
 use xrpl::*;
-use xrpl::request::account_tx::*;
+use xrpl::request::account_tx::AccountTxRequest;
 use common::*;
 
 const DEFAULT_TX_LIMIT: u32 = 3;
@@ -17,9 +17,7 @@ async fn test_account_tx() {
     };
 
     let response = client.request(request).await.unwrap();
-    let result =
-        response.result().expect("Expected account currencies in response");
-    let tx = &result.transactions;
+    let result = response.result().expect("Expected transactions in response");
 
-    assert!(tx.len() > 0);
+    assert!(!result.transactions.is_empty());
 }

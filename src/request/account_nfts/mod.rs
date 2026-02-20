@@ -1,4 +1,3 @@
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
@@ -6,38 +5,26 @@ use serde_with::skip_serializing_none;
 use super::{XrplRequest, XrplResponse};
 
 #[skip_serializing_none]
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct AccountNftsRequest {
     pub account: String,
     pub ledger_hash: Option<String>,
-    pub ledger_index: Option<String>,
+    pub ledger_index: Option<Value>,
     pub limit: Option<u32>,
     pub marker: Option<Value>,
 }
 
-impl From<AccountNftsRequest> for Value {
-    fn from(val: AccountNftsRequest) -> Self {
-        let value = serde_json::to_value(val);
-        if let Err(e) = &value {
-            dbg!(e);
-        };
-        let mut value = value.unwrap().as_object().unwrap().to_owned();
-        value.insert("id".into(), Uuid::new_v4().to_string().into());
-        value.insert("command".into(), "account_nfts".into());
-        value.into()
-    }
-}
-
 impl XrplRequest for AccountNftsRequest {
-    type Response = XrplResponse<AccountNftsResult>;
+    type Response = XrplResponse<AccountNftsResponse>;
+    const COMMAND: &'static str = "account_nfts";
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AccountNftsResult {
+pub struct AccountNftsResponse {
     pub account: String,
     pub account_nfts: Vec<AccountNFToken>,
     pub ledger_hash: Option<String>,
-    pub ledger_index: u32,
+    pub ledger_index: Option<u32>,
     pub ledger_current_index: Option<u32>,
     pub validated: Option<bool>,
     pub marker: Option<Value>,

@@ -4,21 +4,28 @@ use uuid::Uuid;
 
 use crate::request::{XrplRequest, XrplResponse, XrplSubscription};
 
-#[derive(Serialize)]
-pub struct LedgerClosedSubscription;
+#[derive(Debug, Default, Serialize)]
+pub struct LedgerSubscription;
 
-impl From<LedgerClosedSubscription> for Value {
-    fn from(_: LedgerClosedSubscription) -> Self {
+impl XrplRequest for LedgerSubscription {
+    type Response = XrplResponse<LedgerSubscriptionResponse>;
+    const COMMAND: &'static str = "subscribe";
+
+    fn to_value(&self) -> Value {
         json!({
             "id": Uuid::new_v4().to_string(),
             "command": "subscribe",
-            "streams": ["ledger"]
+            "streams": ["ledger"],
+            "api_version": Self::API_VERSION,
         })
     }
 }
 
-impl XrplRequest for LedgerClosedSubscription {
-    type Response = XrplResponse<LedgerSubscriptionResponse>;
+impl XrplSubscription for LedgerSubscription {
+    type Message = LedgerMessage;
+    fn message_type() -> &'static str {
+        "ledgerClosed"
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,12 +39,8 @@ pub struct LedgerSubscriptionResponse {
     pub validated_ledgers: Option<String>,
 }
 
-impl XrplSubscription for LedgerClosedSubscription {
-    type Message = LedgerSubscriptionMessage;
-}
-
 #[derive(Debug, Clone, Deserialize)]
-pub struct LedgerSubscriptionMessage {
+pub struct LedgerMessage {
     pub fee_base: i64,
     pub ledger_hash: String,
     pub ledger_index: i64,
@@ -49,3 +52,22 @@ pub struct LedgerSubscriptionMessage {
     pub kind: String,
     pub validated_ledgers: Option<String>,
 }
+
+#[derive(Debug, Default, Serialize)]
+pub struct LedgerUnsubscription;
+
+impl XrplRequest for LedgerUnsubscription {
+    type Response = XrplResponse<UnsubscribeResponse>;
+    const COMMAND: &'static str = "unsubscribe";
+
+    fn to_value(&self) -> Value {
+        json!({
+            "id": Uuid::new_v4().to_string(),
+            "command": "unsubscribe",
+            "streams": ["ledger"],
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnsubscribeResponse {}

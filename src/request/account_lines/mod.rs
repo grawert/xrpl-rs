@@ -1,4 +1,3 @@
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
@@ -6,37 +5,24 @@ use serde_with::skip_serializing_none;
 use super::{XrplRequest, XrplResponse};
 
 #[skip_serializing_none]
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct AccountLinesRequest {
     pub account: String,
-    pub ingnore_default: Option<bool>,
+    pub ignore_default: Option<bool>,
     pub ledger_hash: Option<String>,
-    pub ledger_index: Option<String>,
+    pub ledger_index: Option<Value>,
     pub limit: Option<u32>,
     pub marker: Option<Value>,
     pub peer: Option<String>,
 }
 
-impl From<AccountLinesRequest> for Value {
-    fn from(val: AccountLinesRequest) -> Self {
-        let value = serde_json::to_value(val);
-        if let Err(e) = &value {
-            dbg!(e);
-        };
-        let mut value = value.unwrap().as_object().unwrap().to_owned();
-        value.insert("id".into(), Uuid::new_v4().to_string().into());
-        value.insert("command".into(), "account_lines".into());
-        value.insert("api_version".into(), 2.into());
-        value.into()
-    }
-}
-
 impl XrplRequest for AccountLinesRequest {
-    type Response = XrplResponse<AccountLinesResult>;
+    type Response = XrplResponse<AccountLinesResponse>;
+    const COMMAND: &'static str = "account_lines";
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AccountLinesResult {
+pub struct AccountLinesResponse {
     pub account: String,
     pub lines: Vec<Trustline>,
     pub ledger_current_index: Option<u32>,

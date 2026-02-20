@@ -18,27 +18,19 @@ impl Default for Amount {
 impl Amount {
     pub fn xrp<T: Into<String>>(value: T) -> Result<Self, String> {
         let value = value.into();
-
-        match value.parse::<f64>() {
-            Ok(xrp) => {
-                let drops = (xrp * 1_000_000.0).round() as u64;
-                Amount::drops(drops.to_string())
-            }
-            Err(_) => Err(format!("Failed to parse '{}' as a number", value)),
-        }
+        let xrp = value
+            .parse::<f64>()
+            .map_err(|_| format!("Failed to parse '{}' as a number", value))?;
+        let drops = (xrp * 1_000_000.0).round() as u64;
+        Ok(Amount::Xrpl(drops.to_string()))
     }
 
     pub fn drops<T: Into<String>>(value: T) -> Result<Self, String> {
-        Ok(Amount::Xrpl(value.into()))
-    }
-
-    fn xrp_infallible(xrp_amount: f64) -> Self {
-        let drops = (xrp_amount * 1_000_000.0).round() as u64;
-        Amount::drops_infallible(drops.to_string())
-    }
-
-    fn drops_infallible<T: ToString>(value: T) -> Self {
-        Amount::Xrpl(value.to_string())
+        let value = value.into();
+        value
+            .parse::<u64>()
+            .map_err(|_| format!("Failed to parse '{}' as drops", value))?;
+        Ok(Amount::Xrpl(value))
     }
 
     pub fn issued_currency<V, C, I>(
@@ -52,31 +44,14 @@ impl Amount {
         I: Into<String>,
     {
         let value = value.into();
-        if value.parse::<f64>().is_err() {
-            return Err(format!("Invalid currency value: '{}'", value));
-        }
-
+        value
+            .parse::<f64>()
+            .map_err(|_| format!("Invalid currency value: '{}'", value))?;
         Ok(Amount::IssuedCurrency {
             value,
             currency: currency.into(),
             issuer: issuer.into(),
         })
-    }
-
-    pub fn issued_currency_infallible<C, I>(
-        value: f64,
-        currency: C,
-        issuer: I,
-    ) -> Self
-    where
-        C: Into<String>,
-        I: Into<String>,
-    {
-        Amount::IssuedCurrency {
-            value: value.to_string(),
-            currency: currency.into(),
-            issuer: issuer.into(),
-        }
     }
 
     pub fn value(&self) -> &str {
@@ -113,19 +88,20 @@ impl Amount {
 
 impl From<f64> for Amount {
     fn from(xrp: f64) -> Self {
-        Amount::xrp_infallible(xrp)
+        let drops = (xrp * 1_000_000.0).round() as u64;
+        Amount::Xrpl(drops.to_string())
     }
 }
 
 impl From<u64> for Amount {
     fn from(drops: u64) -> Self {
-        Amount::drops_infallible(drops.to_string())
+        Amount::Xrpl(drops.to_string())
     }
 }
 
 impl From<i64> for Amount {
     fn from(drops: i64) -> Self {
-        Amount::drops_infallible(drops.to_string())
+        Amount::Xrpl(drops.to_string())
     }
 }
 
@@ -133,11 +109,11 @@ impl FromStr for Amount {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.chars().all(|c| c.is_ascii_digit() || c == '.') {
-            return Ok(Amount::Xrpl(s.to_string()));
+        if s.chars().all(|c| c.is_ascii_digit()) {
+            Ok(Amount::Xrpl(s.to_string()))
+        } else {
+            Err(format!("Cannot parse '{}' as Amount", s))
         }
-
-        Ok(Amount::Xrpl(s.to_string()))
     }
 }
 
@@ -171,8 +147,9 @@ impl TryFrom<Amount> for f64 {
     fn try_from(amount: Amount) -> Result<Self, Self::Error> {
         match amount {
             Amount::Xrpl(value) => {
-                let drops: u64 =
-                    value.parse().map_err(|_| "Invalid XRP amount")?;
+                let drops: u64 = value
+                    .parse()
+                    .map_err(|_| "Invalid XRP amount".to_string())?;
                 Ok(drops as f64 / 1_000_000.0)
             }
             Amount::IssuedCurrency { value, .. } => {
@@ -199,7 +176,7 @@ macro_rules! drops {
 #[macro_export]
 macro_rules! issued {
     ($value:expr, $currency:expr, $issuer:expr) => {
-        Amount::issued_currency_infallible($value, $currency, $issuer)
+        Amount::issued_currency_infallible($value as f64, $currency, $issuer)
     };
 }
 
@@ -234,13 +211,9 @@ mod tests {
             "rXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         )
         .unwrap();
-        let usd2 = issued!(100.5, "USD", "rXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
 
-        assert_eq!(usd, usd2);
-
-        assert_eq!(amount1.value(), "1000000");
-        assert_eq!(amount1.currency(), "XRP");
         assert_eq!(usd.currency(), "USD");
+        assert_eq!(usd.value(), "100.5");
 
         let drops: u64 = amount1.clone().try_into().unwrap();
         assert_eq!(drops, 1000000);

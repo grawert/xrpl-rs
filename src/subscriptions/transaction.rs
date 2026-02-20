@@ -1,57 +1,46 @@
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use crate::types::Transaction;
+use uuid::Uuid;
+
 use crate::request::{XrplRequest, XrplResponse, XrplSubscription};
+use crate::types::Transaction;
 
-const API_VERSION: u32 = 2;
+use super::ledger::UnsubscribeResponse;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct AccountTransactionsSubscription {
-    #[serde(skip_serializing)]
-    pub id: Option<String>,
     pub accounts: Vec<String>,
 }
 
 impl AccountTransactionsSubscription {
     pub fn new(accounts: Vec<String>) -> Self {
-        Self { accounts, id: None }
-    }
-
-    pub fn with_id(mut self, id: String) -> Self {
-        self.id = Some(id);
-        self
-    }
-
-    pub fn get_id(&self) -> Option<&str> {
-        self.id.as_deref()
-    }
-}
-
-impl From<AccountTransactionsSubscription> for Value {
-    fn from(mut val: AccountTransactionsSubscription) -> Self {
-        let id = val.id.unwrap_or_else(|| Uuid::new_v4().to_string());
-        val.id = Some(id.clone());
-
-        json!({
-            "id": id,
-            "command": "subscribe",
-            "accounts": val.accounts,
-            "api_version": API_VERSION
-        })
+        Self { accounts }
     }
 }
 
 impl XrplRequest for AccountTransactionsSubscription {
     type Response = XrplResponse<AccountSubscriptionResponse>;
+    const COMMAND: &'static str = "subscribe";
+
+    fn to_value(&self) -> Value {
+        json!({
+            "id": Uuid::new_v4().to_string(),
+            "command": "subscribe",
+            "accounts": self.accounts,
+            "api_version": Self::API_VERSION,
+        })
+    }
+}
+
+impl XrplSubscription for AccountTransactionsSubscription {
+    type Message = AccountTransactionMessage;
+    fn message_type() -> &'static str {
+        "transaction"
+    }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct AccountSubscriptionResponse {}
-
-impl XrplSubscription for AccountTransactionsSubscription {
-    type Message = AccountTransactionMessage;
-}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountTransactionMessage {
@@ -79,82 +68,26 @@ pub struct TransactionMeta {
     pub delivered_amount: Option<Value>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct AccountTransactionsUnsubscription {
     pub accounts: Vec<String>,
-    #[serde(skip_serializing)]
-    pub id: Option<String>,
 }
 
 impl AccountTransactionsUnsubscription {
     pub fn new(accounts: Vec<String>) -> Self {
-        Self { accounts, id: None }
-    }
-
-    pub fn with_id(mut self, id: String) -> Self {
-        self.id = Some(id);
-        self
-    }
-
-    pub fn get_id(&self) -> Option<&str> {
-        self.id.as_deref()
-    }
-}
-
-impl From<AccountTransactionsUnsubscription> for Value {
-    fn from(mut val: AccountTransactionsUnsubscription) -> Self {
-        let id = val.id.unwrap_or_else(|| Uuid::new_v4().to_string());
-        val.id = Some(id.clone());
-
-        json!({
-            "id": id,
-            "command": "unsubscribe",
-            "accounts": val.accounts
-        })
+        Self { accounts }
     }
 }
 
 impl XrplRequest for AccountTransactionsUnsubscription {
     type Response = XrplResponse<UnsubscribeResponse>;
-}
+    const COMMAND: &'static str = "unsubscribe";
 
-#[derive(Debug, Deserialize)]
-pub struct UnsubscribeResponse {}
-
-#[derive(Default, Serialize)]
-pub struct LedgerClosedUnsubscription {
-    #[serde(skip_serializing)]
-    pub id: Option<String>,
-}
-
-impl LedgerClosedUnsubscription {
-    pub fn new() -> Self {
-        Self { id: None }
-    }
-
-    pub fn with_id(mut self, id: String) -> Self {
-        self.id = Some(id);
-        self
-    }
-
-    pub fn get_id(&self) -> Option<&str> {
-        self.id.as_deref()
-    }
-}
-
-impl From<LedgerClosedUnsubscription> for Value {
-    fn from(mut val: LedgerClosedUnsubscription) -> Self {
-        let id = val.id.unwrap_or_else(|| Uuid::new_v4().to_string());
-        val.id = Some(id.clone());
-
+    fn to_value(&self) -> Value {
         json!({
-            "id": id,
+            "id": Uuid::new_v4().to_string(),
             "command": "unsubscribe",
-            "streams": ["ledger"]
+            "accounts": self.accounts,
         })
     }
-}
-
-impl XrplRequest for LedgerClosedUnsubscription {
-    type Response = XrplResponse<UnsubscribeResponse>;
 }

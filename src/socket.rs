@@ -1,286 +1,157 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
-use tracing::*;
-use serde_json::Value;
+
 use futures_util::{SinkExt, StreamExt};
-use tokio::{
-    sync::{broadcast, mpsc, oneshot},
-    time,
-};
-use tokio_util::sync::CancellationToken;
+use serde_json::Value;
+use tokio::sync::{broadcast, mpsc, oneshot, Mutex};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-use crate::error::XrplSocketError;
-use crate::request::XrplSubscription;
+use crate::error::XrplError;
 
-const PING_INTERVAL: Duration = Duration::from_secs(30);
-const WEBSOCKET_RECEIVE_TIMEOUT: Duration = Duration::from_secs(40);
+type PendingMap = Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>;
+type SubscriptionList = Arc<Mutex<Vec<Value>>>;
 
-#[derive(Debug)]
-pub struct XrplSocket {
-    cancel: CancellationToken,
-    sender: mpsc::Sender<String>,
-    receiver: broadcast::Receiver<String>,
-    timeout_dur: Option<i64>,
+static REQUEST_ID: AtomicU64 = AtomicU64::new(1);
+
+fn next_id() -> u64 {
+    REQUEST_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-impl Clone for XrplSocket {
-    fn clone(&self) -> Self {
-        Self {
-            receiver: self.receiver.resubscribe(),
-            sender: self.sender.clone(),
-            timeout_dur: self.timeout_dur,
-            cancel: self.cancel.clone(),
-        }
-    }
+#[derive(Clone)]
+pub struct XrplSocket {
+    outgoing: mpsc::Sender<String>,
+    pending: PendingMap,
+    events: broadcast::Sender<Value>,
+    subscriptions: SubscriptionList,
 }
 
 impl XrplSocket {
-    pub async fn new(
-        url: &str,
-        timeout_dur: Option<i64>,
-    ) -> Result<XrplSocket, XrplSocketError> {
-        let (receiver_out, receiver) = broadcast::channel(1000);
-        let (sender, sender_in) = mpsc::channel(1000);
+    pub async fn connect(url: &str) -> Result<Self, XrplError> {
+        let (outgoing_tx, outgoing_rx) = mpsc::channel(32);
+        let (events_tx, _) = broadcast::channel(64);
+        let pending: PendingMap = Arc::new(Mutex::new(HashMap::new()));
+        let subscriptions: SubscriptionList = Arc::new(Mutex::new(Vec::new()));
 
-        let socket = XrplSocket {
-            receiver,
-            sender,
-            timeout_dur,
-            cancel: CancellationToken::new(),
-        };
+        tokio::spawn(connection_loop(
+            url.to_string(),
+            outgoing_rx,
+            pending.clone(),
+            events_tx.clone(),
+            subscriptions.clone(),
+        ));
 
-        socket.start_connection(url.to_string(), receiver_out, sender_in).await;
-
-        Ok(socket)
-    }
-
-    async fn start_connection(
-        &self,
-        url: String,
-        receiver_out: broadcast::Sender<String>,
-        sender_in: mpsc::Receiver<String>,
-    ) {
-        let cancel = self.cancel.clone();
-
-        tokio::spawn(async move {
-            let mut sender_in = sender_in;
-            let _ = Self::connect_and_run(
-                url,
-                receiver_out,
-                &mut sender_in,
-                cancel,
-            )
-            .await;
-        });
-    }
-
-    async fn connect_and_run(
-        url: String,
-        receiver_out: broadcast::Sender<String>,
-        sender_in: &mut mpsc::Receiver<String>,
-        cancel: CancellationToken,
-    ) -> Result<(), XrplSocketError> {
-        let (stream, _) = connect_async(&url).await?;
-        let (mut ws_sender, mut ws_receiver) = stream.split();
-
-        let mut ping_interval = time::interval(PING_INTERVAL);
-        let mut last_receive = time::Instant::now();
-
-        loop {
-            tokio::select! {
-                msg = ws_receiver.next() => {
-                    match msg {
-                        Some(Ok(Message::Text(msg))) => {
-                            if let Err(e) = receiver_out.send(msg) {
-                                error!("Error sending websocket response over broadcast channel: {e:?}");
-                            }
-                            last_receive = time::Instant::now();
-                        },
-                        Some(Ok(Message::Ping(data))) => {
-                            if let Err(e) = ws_sender.send(Message::Pong(data)).await {
-                                warn!("Failed to send pong: {e:?}");
-                                return Err(XrplSocketError::Disconnected);
-                            }
-                            last_receive = time::Instant::now();
-                        },
-                        Some(Ok(Message::Pong(_))) => {
-                            last_receive = time::Instant::now();
-                        },
-                        Some(Ok(Message::Close(_))) => {
-                            warn!("WebSocket connection closed by server");
-                            return Err(XrplSocketError::Disconnected);
-                        },
-                        Some(Err(e)) => {
-                            error!("WebSocket error: {e:?}");
-                            return Err(XrplSocketError::Disconnected);
-                        },
-                        _ => {
-                            warn!("WebSocket stream ended");
-                            return Err(XrplSocketError::Disconnected);
-                        },
-                    }
-                }
-
-                msg = sender_in.recv() => {
-                    match msg {
-                        Some(msg) => {
-                            if let Err(e) = ws_sender.send(Message::Text(msg)).await {
-                                error!("Error sending request message: {e:?}");
-                                return Err(XrplSocketError::Disconnected);
-                            }
-                        },
-                        _ => {
-                            return Ok(());
-                        }
-                    }
-                }
-
-                _ = ping_interval.tick() => {
-                    if let Err(e) = ws_sender.send(Message::Ping(Vec::new())).await {
-                        warn!("Failed to ping socket: {e}");
-                        return Err(XrplSocketError::Disconnected);
-                    }
-                }
-
-                _ = time::sleep(Duration::from_secs(1)) => {
-                    if last_receive.elapsed() > WEBSOCKET_RECEIVE_TIMEOUT {
-                        warn!("WebSocket receive timeout - connection may be dead");
-                        return Err(XrplSocketError::Disconnected);
-                    }
-                }
-
-                _ = cancel.cancelled() => {
-                    warn!("Connection cancelled");
-                    return Ok(());
-                }
-            }
-        }
+        Ok(Self {
+            outgoing: outgoing_tx,
+            pending,
+            events: events_tx,
+            subscriptions,
+        })
     }
 
     pub async fn request(
         &self,
-        request: Value,
-    ) -> Result<String, XrplSocketError> {
-        if self.cancel.is_cancelled() {
-            return Err(XrplSocketError::Disconnected);
-        }
+        mut payload: Value,
+    ) -> Result<Value, XrplError> {
+        let id = next_id();
+        payload["id"] = id.into();
 
-        let mut ws_receiver = self.receiver.resubscribe();
-        let (out_sender, out_rec) = oneshot::channel::<String>();
+        let (tx, rx) = oneshot::channel();
+        self.pending.lock().await.insert(id, tx);
 
-        let req_obj = request.as_object().ok_or_else(|| {
-            XrplSocketError::InvalidRequest {
-                field: "request must be an object".to_string(),
-            }
-        })?;
-
-        let req_id = req_obj.get("id").ok_or_else(|| {
-            XrplSocketError::InvalidRequest { field: "id".to_string() }
-        })?;
-
-        self.sender
-            .send(request.to_string())
+        self.outgoing
+            .send(payload.to_string())
             .await
-            .map_err(|_| XrplSocketError::Disconnected)?;
+            .map_err(|_| XrplError::Disconnected)?;
 
-        let cancel = self.cancel.clone();
-        let req_id = req_id.clone();
-
-        tokio::spawn(async move {
-            loop {
-                if cancel.is_cancelled() {
-                    break;
-                }
-
-                match ws_receiver.recv().await {
-                    Ok(msg) => match serde_json::from_str::<Value>(&msg) {
-                        Ok(response) => {
-                            if let Some(response_obj) = response.as_object() {
-                                if let Some(response_id) =
-                                    response_obj.get("id")
-                                {
-                                    if req_id == *response_id {
-                                        let _ = out_sender
-                                            .send(response.to_string());
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            warn!("Failed to parse response JSON: {e}");
-                        }
-                    },
-                    Err(broadcast::error::RecvError::Lagged(_)) => {
-                        continue;
-                    }
-                    Err(broadcast::error::RecvError::Closed) => {
-                        break;
-                    }
-                }
-            }
-        });
-
-        let timeout_ms = self.timeout_dur.unwrap_or(5000) as u64;
-
-        tokio::select! {
-            res = out_rec => {
-                res.map_err(|_| XrplSocketError::Disconnected)
-            },
-            _ = tokio::time::sleep(Duration::from_millis(timeout_ms)) => {
-                Err(XrplSocketError::RequestTimeout { timeout_ms })
-            }
-        }
+        tokio::time::timeout(Duration::from_secs(30), rx)
+            .await
+            .map_err(|_| XrplError::Timeout(30_000))?
+            .map_err(|_| XrplError::Disconnected)
     }
 
-    pub async fn subscribe<T: XrplSubscription>(
-        &self,
-    ) -> Result<broadcast::Receiver<T::Message>, XrplSocketError> {
-        if self.cancel.is_cancelled() {
-            return Err(XrplSocketError::Disconnected);
-        }
+    pub async fn track_subscription(&self, payload: Value) {
+        self.subscriptions.lock().await.push(payload);
+    }
 
-        let cancel = self.cancel.clone();
-        let mut ws_receiver = self.receiver.resubscribe();
-        let (sender, receiver) = broadcast::channel::<T::Message>(100);
-
-        tokio::spawn(async move {
-            loop {
-                if cancel.is_cancelled() {
-                    break;
-                }
-
-                match ws_receiver.recv().await {
-                    Ok(msg) => {
-                        match serde_json::from_str::<T::Message>(&msg) {
-                            Ok(parsed) => {
-                                if let Err(e) = sender.send(parsed) {
-                                    warn!("Failed to send subscription message: {e}");
-                                }
-                            }
-                            Err(_) => {
-                                continue;
-                            }
-                        }
-                    }
-                    Err(broadcast::error::RecvError::Lagged(_)) => {
-                        continue;
-                    }
-                    Err(broadcast::error::RecvError::Closed) => {
-                        break;
-                    }
-                }
-            }
-        });
-
-        Ok(receiver)
+    pub fn subscribe(&self) -> broadcast::Receiver<Value> {
+        self.events.subscribe()
     }
 
     pub fn is_connected(&self) -> bool {
-        !self.cancel.is_cancelled()
+        !self.outgoing.is_closed()
     }
+}
 
-    pub async fn close(&self) {
-        self.cancel.cancel();
+async fn connection_loop(
+    url: String,
+    mut outgoing_rx: mpsc::Receiver<String>,
+    pending: PendingMap,
+    events: broadcast::Sender<Value>,
+    subscriptions: SubscriptionList,
+) {
+    let mut backoff = Duration::from_secs(1);
+    const MAX_BACKOFF: Duration = Duration::from_secs(30);
+
+    loop {
+        match connect_async(&url).await {
+            Ok((ws_stream, _)) => {
+                backoff = Duration::from_secs(1);
+                let (mut write, mut read) = ws_stream.split();
+
+                // Re-subscribe to active subscriptions after reconnect
+                for sub in subscriptions.lock().await.iter() {
+                    let _ =
+                        write.send(Message::Text(sub.to_string().into())).await;
+                }
+
+                loop {
+                    tokio::select! {
+                        msg = outgoing_rx.recv() => {
+                            match msg {
+                                Some(text) => {
+                                    if write.send(Message::Text(text.into())).await.is_err() {
+                                        break;
+                                    }
+                                }
+                                None => return, // sender dropped, shut down
+                            }
+                        }
+                        msg = read.next() => {
+                            match msg {
+                                Some(Ok(Message::Text(text))) => {
+                                    let value: Value = match serde_json::from_str(text.as_str()) {
+                                        Ok(v) => v,
+                                        Err(_) => continue,
+                                    };
+
+                                    if let Some(id) = value["id"].as_u64() {
+                                        if let Some(tx) = pending.lock().await.remove(&id) {
+                                            let _ = tx.send(value);
+                                        }
+                                    } else {
+                                        let _ = events.send(value);
+                                    }
+                                }
+                                _ => break, // connection dropped, reconnect
+                            }
+                        }
+                    }
+                }
+
+                // Clear pending requests — they won't get responses
+                pending.lock().await.clear();
+            }
+            Err(e) => {
+                eprintln!(
+                    "Connection failed: {e}, retrying in {}s",
+                    backoff.as_secs()
+                );
+            }
+        }
+
+        tokio::time::sleep(backoff).await;
+        backoff = (backoff * 2).min(MAX_BACKOFF);
     }
 }

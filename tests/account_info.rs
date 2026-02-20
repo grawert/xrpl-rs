@@ -1,7 +1,7 @@
 mod common;
 
 use xrpl::*;
-use xrpl::request::account_info::*;
+use xrpl::request::account_info::AccountInfoRequest;
 use common::*;
 
 #[ignore]
@@ -12,11 +12,12 @@ async fn test_account_info() {
         account: TEST_ACCOUNT.to_string(),
         ..Default::default()
     };
+
     let response = client.request(request).await.unwrap();
     let result = response.result().expect("Expected account data in response");
     let account_root = &result.account_data;
 
-    assert!(account_root.account == TEST_ACCOUNT);
-    assert!(account_root.balance.is_empty() == false);
+    assert_eq!(account_root.account, TEST_ACCOUNT);
+    assert!(!account_root.balance.is_empty());
     assert!(account_root.sequence > 0);
 }

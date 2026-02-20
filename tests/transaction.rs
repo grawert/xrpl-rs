@@ -1,17 +1,18 @@
 mod common;
 
-use xrpl::*;
-use xrpl::types::*;
-use xrpl::request::submit::SubmitRequest;
-use xrpl::request::account_info::*;
-use anyhow::{Result, anyhow};
-use ripple_keypairs::{PublicKey, PrivateKey, Seed};
+use anyhow::{anyhow, Result};
+use hex;
+use ripple_keypairs::{PrivateKey, PublicKey, Seed};
 use rippled_binary_codec::serialize::serialize_tx;
+use xrpl::*;
+use xrpl::request::account_info::AccountInfoRequest;
+use xrpl::request::submit::SubmitRequest;
+use xrpl::types::*;
 use common::*;
 
 const STX_PREFIX: &str = "53545800";
-const FEE_AMOUNT: u32 = 10;
-const PAYMENT_AMOUNT: f64 = 0.01;
+const FEE_DROPS: u32 = 10;
+const PAYMENT_XRP: f64 = 0.01;
 
 pub struct Wallet {
     pub public_key: PublicKey,
@@ -25,25 +26,24 @@ impl SigningContext for Wallet {
         &self,
         tx: &Transaction,
     ) -> Result<String, Self::Error> {
-        let mut tx_json: serde_json::Value = serde_json::to_value(&tx)
+        let mut tx_json = serde_json::to_value(tx)
             .expect("Failed to convert transaction to json");
         tx_json["SigningPubKey"] = self.public_key.to_string().into();
-        let json_str = serde_json::to_string(&tx_json)?;
 
-        let tx_hex = serialize_tx(json_str, true).ok_or_else(|| {
-            anyhow!("Failed to serialize transaction for signing")
-        })?;
+        let tx_hex = serialize_tx(serde_json::to_string(&tx_json)?, true)
+            .ok_or_else(|| {
+                anyhow!("Failed to serialize transaction for signing")
+            })?;
 
-        let signing_hex = format!("{}{}", STX_PREFIX, tx_hex);
-        let signing_bytes = hex::decode(&signing_hex)?;
+        let signing_bytes = hex::decode(format!("{}{}", STX_PREFIX, tx_hex))?;
         let signature = self.private_key.sign(&signing_bytes);
-
         tx_json["TxnSignature"] = signature.to_string().into();
-        let final_json = serde_json::to_string(&tx_json)?;
 
-        let tx_signed = serialize_tx(final_json, false).ok_or_else(|| {
-            anyhow!("Failed to serialize transaction for signing")
+        let tx_signed = serialize_tx(serde_json::to_string(&tx_json)?, false)
+            .ok_or_else(|| {
+            anyhow!("Failed to serialize signed transaction")
         })?;
+
         Ok(tx_signed)
     }
 }
@@ -63,33 +63,35 @@ async fn test_transaction() {
 
     let client =
         XrplClient::new(SERVER_URL).await.expect("Client creation failed");
-    let request = AccountInfoRequest {
-        account: wallet.public_key.derive_address().into(),
-        ..Default::default()
-    };
-    let response =
-        client.request(request).await.expect("Request account info failed");
-    let result = response.result().expect("Expected result");
-    let account_root = &result.account_data;
-    let sequence: u32 =
-        account_root.sequence.try_into().expect("Invalid sequence");
+
+    let response = client
+        .request(AccountInfoRequest {
+            account: wallet.public_key.derive_address().into(),
+            ..Default::default()
+        })
+        .await
+        .expect("account_info failed");
+
+    let sequence =
+        response.result().expect("Expected result").account_data.sequence;
 
     let payment = PaymentBuilder::new(
         wallet.public_key.derive_address().into(),
-        destination_address.into(),
-        sequence.into(),
-        drops!(FEE_AMOUNT),
-        xrp!(PAYMENT_AMOUNT),
+        destination_address,
+        sequence,
+        drops!(FEE_DROPS),
+        xrp!(PAYMENT_XRP),
     )
     .build()
-    .expect("Create payment failed");
+    .expect("Payment build failed");
 
     let signed_blob = payment.sign_with(&wallet).expect("Signing failed");
-    let submit_request =
-        SubmitRequest { tx_blob: signed_blob, fail_hard: None };
-    let response =
-        client.request(submit_request).await.expect("Transaction failed");
-    let result = response.result().expect("Response error");
 
-    assert!(result.engine_result == "tesSUCCESS");
+    let response = client
+        .request(SubmitRequest { tx_blob: signed_blob, fail_hard: None })
+        .await
+        .expect("Submit failed");
+
+    let result = response.result().expect("Response error");
+    assert_eq!(result.engine_result, "tesSUCCESS");
 }

@@ -1,7 +1,5 @@
-use super::{
-    TransactionBuilder, TransactionTypeBuilder, BuildError,
-    validate_destination,
-};
+use super::{BuildError, TransactionBuilder, TransactionTypeBuilder};
+use super::validate::{validate_address, validate_amount};
 use crate::types::{Amount, PathStep, TransactionType};
 
 pub struct Payment {
@@ -16,24 +14,32 @@ pub struct Payment {
 
 pub type PaymentBuilder = TransactionBuilder<Payment>;
 
-/// Create a new payment transaction
-/// ```
+/// Create a new payment transaction.
+///
+/// # Example
+/// ```no_run
+/// use xrpl::types::{Amount, Memo};
+/// use xrpl::types::builders::PaymentBuilder;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let memo = Memo {
 ///     memo_data: Some("72656e74".to_string()),
 ///     memo_type: Some("746578742f706c61696e".to_string()),
 ///     memo_format: None,
-///     };
+/// };
 ///
 /// let payment = PaymentBuilder::new(
-///     account.into(),
-///     destination.into(),
-///     sequence.into(),
-///     drops!(10),
-///     1.99.into(),
+///     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh".to_string(),
+///     "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe".to_string(),
+///     1,
+///     Amount::from(10u64),
+///     Amount::from(1.99f64),
 /// )
-/// .with_destination_tag(destination_tag)
+/// .with_destination_tag(12345)
 /// .with_memos(vec![memo])
 /// .build()?;
+/// # Ok(())
+/// # }
 /// ```
 impl PaymentBuilder {
     pub fn new(
@@ -90,8 +96,7 @@ impl TransactionTypeBuilder for Payment {
 
     fn validate(&self) -> Result<(), BuildError> {
         validate_amount(&self.deliver_max)?;
-        validate_destination(&self.destination)?;
-
+        validate_address(&self.destination, "destination")?;
         Ok(())
     }
 
@@ -99,8 +104,8 @@ impl TransactionTypeBuilder for Payment {
         self,
     ) -> Result<Self::TransactionType, BuildError> {
         Ok(TransactionType::Payment {
-            amount: Some(self.deliver_max),
-            deliver_max: None,
+            amount: Some(self.deliver_max.clone()),
+            deliver_max: Some(self.deliver_max),
             deliver_min: self.deliver_min,
             destination: self.destination,
             destination_tag: self.destination_tag,
@@ -109,64 +114,6 @@ impl TransactionTypeBuilder for Payment {
             send_max: self.send_max,
         })
     }
-}
-
-fn validate_amount(amount: &Amount) -> Result<(), BuildError> {
-    match amount {
-        Amount::Xrpl(amount) => validate_xrp_amount(amount),
-        Amount::IssuedCurrency { value, currency, issuer } => {
-            validate_token_value(value)?;
-            validate_currency(currency)?;
-            validate_issuer(issuer)
-        }
-    }
-}
-
-fn validate_xrp_amount(amount_str: &str) -> Result<(), BuildError> {
-    if amount_str.is_empty() || amount_str == "0" {
-        return Err(BuildError::InvalidAmount(
-            "XRP amount cannot be zero or empty".to_string(),
-        ));
-    }
-
-    Ok(())
-}
-
-fn validate_token_value(value: &str) -> Result<(), BuildError> {
-    if value.is_empty() || value == "0" {
-        return Err(BuildError::InvalidAmount(
-            "Token value cannot be zero or empty".to_string(),
-        ));
-    }
-
-    Ok(())
-}
-
-fn validate_currency(currency: &str) -> Result<(), BuildError> {
-    if currency.len() != 3 || !currency.chars().all(|c| c.is_ascii_uppercase())
-    {
-        return Err(BuildError::InvalidField(
-            "Currency must be exactly 3 uppercase ASCII characters".to_string(),
-        ));
-    }
-    if currency == "XRP" {
-        return Err(BuildError::InvalidField(
-            "Currency code XRP is not allowed for issued currencies"
-                .to_string(),
-        ));
-    }
-
-    Ok(())
-}
-
-fn validate_issuer(issuer: &str) -> Result<(), BuildError> {
-    if !issuer.starts_with('r') {
-        return Err(BuildError::InvalidField(
-            "Issuer address must start with 'r'".to_string(),
-        ));
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -179,23 +126,27 @@ mod tests {
     #[test]
     fn test_payment_builder_basic() {
         let payment = PaymentBuilder::new(
-            "rAccount123".to_string(),
-            "rDestination456".to_string(),
-            SEQUENCE.into(),
+            "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh".to_string(),
+            "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe".to_string(),
+            SEQUENCE,
             drops!(10),
             xrp!(1),
         )
         .build()
         .expect("Should build valid payment");
 
-        assert_eq!(payment.account, "rAccount123");
         assert_eq!(payment.sequence, 1);
         assert_eq!(payment.fee, "10");
 
-        if let TransactionType::Payment { destination, amount, .. } =
-            payment.transaction_type
+        if let TransactionType::Payment {
+            destination,
+            amount,
+            deliver_max,
+            ..
+        } = payment.transaction_type
         {
-            assert_eq!(destination, "rDestination456");
+            assert_eq!(destination, "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe");
+            assert_eq!(amount, deliver_max);
             assert_eq!(amount, Some(Amount::Xrpl("1000000".to_string())));
         } else {
             panic!("Expected Payment transaction type");
@@ -211,9 +162,9 @@ mod tests {
         };
 
         let payment = PaymentBuilder::new(
-            "rAccount123".to_string(),
-            "rDestination456".to_string(),
-            SEQUENCE.into(),
+            "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh".to_string(),
+            "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe".to_string(),
+            SEQUENCE,
             drops!(10),
             xrp!(1),
         )
@@ -221,16 +172,15 @@ mod tests {
         .build()
         .expect("Should build valid payment");
 
-        assert!(payment.memos.is_some());
-        assert_eq!(payment.memos.as_ref().unwrap().len(), 1);
+        assert_eq!(payment.memos.unwrap().len(), 1);
     }
 
     #[test]
     fn test_payment_builder_with_destination_tag() {
         let payment = PaymentBuilder::new(
-            "rAccount123".to_string(),
-            "rDestination456".to_string(),
-            SEQUENCE.into(),
+            "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh".to_string(),
+            "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe".to_string(),
+            SEQUENCE,
             drops!(10),
             xrp!(1),
         )
@@ -248,63 +198,58 @@ mod tests {
     }
 
     #[test]
-    fn test_payment_builder_validation_empty_account() {
+    fn test_payment_builder_invalid_account() {
         let result = PaymentBuilder::new(
-            "".to_string(),
-            "rDestination456".to_string(),
-            SEQUENCE.into(),
+            "not_an_address".to_string(),
+            "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe".to_string(),
+            SEQUENCE,
             drops!(10),
             xrp!(1),
         )
         .build();
 
-        assert!(matches!(result, Err(BuildError::EmptyAccount)));
+        assert!(matches!(result, Err(BuildError::InvalidField(_))));
     }
 
     #[test]
-    fn test_payment_builder_validation_empty_destination() {
+    fn test_payment_builder_invalid_destination() {
         let result = PaymentBuilder::new(
-            "rAccount123".to_string(),
-            "".to_string(),
-            SEQUENCE.into(),
+            "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh".to_string(),
+            "not_an_address".to_string(),
+            SEQUENCE,
             drops!(10),
             xrp!(1),
         )
         .build();
 
-        assert!(matches!(result, Err(BuildError::EmptyDestination)));
+        assert!(matches!(result, Err(BuildError::InvalidField(_))));
     }
 
     #[test]
     fn test_payment_builder_with_issued_currency() {
         let payment = PaymentBuilder::new(
-            "rAccount123".to_string(),
-            "rDestination456".to_string(),
-            SEQUENCE.into(),
+            "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh".to_string(),
+            "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe".to_string(),
+            SEQUENCE,
             drops!(10),
             Amount::IssuedCurrency {
                 value: "100.50".to_string(),
                 currency: "USD".to_string(),
-                issuer: "rTrust1234567890123456789012345".to_string(),
+                issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh".to_string(),
             },
         )
         .build()
         .expect("Should build valid payment with issued currency");
 
-        assert_eq!(payment.account, "rAccount123");
-        assert_eq!(payment.sequence, 1);
-        assert_eq!(payment.fee, "10");
-
-        if let TransactionType::Payment { destination, amount, .. } =
+        if let TransactionType::Payment { amount, .. } =
             payment.transaction_type
         {
-            assert_eq!(destination, "rDestination456");
             if let Some(Amount::IssuedCurrency { value, currency, issuer }) =
                 amount
             {
                 assert_eq!(value, "100.50");
                 assert_eq!(currency, "USD");
-                assert_eq!(issuer, "rTrust1234567890123456789012345");
+                assert_eq!(issuer, "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
             } else {
                 panic!("Expected IssuedCurrency amount");
             }

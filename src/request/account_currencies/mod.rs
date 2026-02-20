@@ -1,4 +1,3 @@
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
@@ -6,32 +5,20 @@ use serde_with::skip_serializing_none;
 use super::{XrplRequest, XrplResponse};
 
 #[skip_serializing_none]
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct AccountCurrenciesRequest {
     pub account: String,
     pub ledger_hash: Option<String>,
-    pub ledger_index: Option<String>,
-}
-
-impl From<AccountCurrenciesRequest> for Value {
-    fn from(val: AccountCurrenciesRequest) -> Self {
-        let value = serde_json::to_value(val);
-        if let Err(e) = &value {
-            dbg!(e);
-        };
-        let mut value = value.unwrap().as_object().unwrap().to_owned();
-        value.insert("id".into(), Uuid::new_v4().to_string().into());
-        value.insert("command".into(), "account_currencies".into());
-        value.into()
-    }
+    pub ledger_index: Option<Value>,
 }
 
 impl XrplRequest for AccountCurrenciesRequest {
-    type Response = XrplResponse<AccountCurrenciesResult>;
+    type Response = XrplResponse<AccountCurrenciesResponse>;
+    const COMMAND: &'static str = "account_currencies";
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AccountCurrenciesResult {
+pub struct AccountCurrenciesResponse {
     pub ledger_hash: Option<String>,
     pub ledger_index: Option<u32>,
     pub receive_currencies: Vec<String>,

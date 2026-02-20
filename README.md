@@ -1,38 +1,8 @@
-# xrpl
+# xrpl-ws
 
-A multithreaded websocket client library for interacting with the xrp ledger's json rpc. At its core, the client maintains a single websocket connection, but is able to make atomic requests to the json rpc with a single function call, or make subscriptions with a function that returns a listener for incoming messages. These features are implemented using the websocket implementation by `tokio-tungstenite`, as well as using channels implemented by `tokio::sync`.
-
-## Roadmap
-
-- connect to the ledger, and make basic rpc requests ✅
-  - open and maintain a websocket connection to the ledger ✅
-  - make atomic json rpc requests for info ✅
-  - make subscription requests with dedicated listeners ✅
-- implement wallets
-  - create a new wallet from entropy
-  - derive a wallet from seed
-- implement transactions
-  - create typesafe transaction builder
-  - sign transactions with wallet
+A websocket client library for interacting with the xrp ledger's json rpc. At its core, the client maintains a single websocket connection, but is able to make atomic requests to the json rpc with a single function call, or make subscriptions with a function that returns a listener for incoming messages. These features are implemented using the websocket implementation by `tokio-tungstenite`, as well as using channels implemented by `tokio::sync`.
 
 ## Usage
-
-This client library was written to be as close to the javascript client as possible. A common example with the javascript library would be as follows:
-
-```js
-import { Client } from "xrpl";
-
-async function main() {
-  const client = new Client("wss://xrpl.ws");
-  const res = await client.request({
-    command: "account_info",
-    account: "r...",
-  });
-  console.log(res);
-}
-```
-
-Using this client, the same request may be performed as:
 
 ```rust
 use xrpl::{XrplClient, request};

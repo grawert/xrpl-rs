@@ -1,18 +1,14 @@
 use crate::types::{
     Amount, Memo, MemoWrapper, Signer, SignerWrapper, Transaction,
-    TransactionType,
+    TransactionType, validate_address,
 };
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
-    #[error("Fee must be in XRP")]
+    #[error("Fee must be in XRP drops")]
     FeeNotXRP,
-    #[error("Account cannot be empty")]
-    EmptyAccount,
     #[error("Invalid amount: {0}")]
     InvalidAmount(String),
-    #[error("Destination cannot be empty")]
-    EmptyDestination,
     #[error("Invalid field: {0}")]
     InvalidField(String),
 }
@@ -33,7 +29,6 @@ pub struct TransactionBuilder<T> {
 
 pub trait TransactionTypeBuilder {
     type TransactionType;
-
     fn validate(&self) -> Result<(), BuildError>;
     fn build_transaction_type(
         self,
@@ -75,18 +70,18 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
     }
 
     pub fn with_memos(mut self, memos: Vec<Memo>) -> Self {
-        let memos: Vec<MemoWrapper> =
-            memos.into_iter().map(|memo| MemoWrapper { memo }).collect();
-        self.memos = Some(memos);
+        self.memos =
+            Some(memos.into_iter().map(|memo| MemoWrapper { memo }).collect());
         self
     }
 
     pub fn with_signers(mut self, signers: Vec<Signer>) -> Self {
-        let signers: Vec<SignerWrapper> = signers
-            .into_iter()
-            .map(|signer| SignerWrapper { signer })
-            .collect();
-        self.signers = Some(signers);
+        self.signers = Some(
+            signers
+                .into_iter()
+                .map(|signer| SignerWrapper { signer })
+                .collect(),
+        );
         self
     }
 
@@ -106,8 +101,11 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
     }
 
     pub fn build(self) -> Result<Transaction, BuildError> {
-        validate_fee(&self.fee)?;
-        validate_account(&self.account)?;
+        match &self.fee {
+            Amount::IssuedCurrency { .. } => return Err(BuildError::FeeNotXRP),
+            Amount::Xrpl(_) => {}
+        }
+        validate_address(&self.account, "account")?;
         self.transaction_type.validate()?;
         let transaction_type =
             self.transaction_type.build_transaction_type()?;
@@ -129,25 +127,4 @@ impl<T: TransactionTypeBuilder<TransactionType = TransactionType>>
             transaction_type,
         })
     }
-}
-
-fn validate_fee(fee: &Amount) -> Result<(), BuildError> {
-    match fee {
-        Amount::Xrpl(..) => Ok(()),
-        Amount::IssuedCurrency { .. } => Err(BuildError::FeeNotXRP),
-    }
-}
-
-pub fn validate_account(account: &str) -> Result<(), BuildError> {
-    if account.is_empty() {
-        return Err(BuildError::EmptyAccount);
-    }
-    Ok(())
-}
-
-pub fn validate_destination(destination: &str) -> Result<(), BuildError> {
-    if destination.is_empty() {
-        return Err(BuildError::EmptyDestination);
-    }
-    Ok(())
 }

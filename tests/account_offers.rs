@@ -6,9 +6,9 @@ use serde_json::json;
 
 #[ignore]
 #[tokio::test]
-async fn test_account_currencies() {
+async fn test_account_offers() {
     let client = XrplClient::new(SERVER_URL).await.unwrap();
-    let request = request::account_currencies::AccountCurrenciesRequest {
+    let request = request::account_offers::AccountOffersRequest {
         account: TEST_ACCOUNT.to_string(),
         ledger_index: Some(json!("validated")),
         ..Default::default()
@@ -16,8 +16,7 @@ async fn test_account_currencies() {
 
     let response = client.request(request).await.unwrap();
     let result =
-        response.result().expect("Expected account currencies in response");
+        response.result().expect("Expected account offers in response");
 
-    assert!(!result.send_currencies.is_empty());
-    assert!(!result.receive_currencies.is_empty());
+    assert_eq!(result.account, TEST_ACCOUNT);
 }

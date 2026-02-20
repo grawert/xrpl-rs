@@ -4,7 +4,7 @@ pub mod amount;
 pub mod builders;
 pub mod transaction;
 
+pub use account_object::*;
 pub use amount::*;
 pub use builders::*;
-pub use account_object::*;
 pub use transaction::*;

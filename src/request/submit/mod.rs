@@ -1,35 +1,18 @@
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use serde_with::skip_serializing_none;
 
 use super::{XrplRequest, XrplResponse};
 
-const API_VERSION: u32 = 2;
-
 #[skip_serializing_none]
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct SubmitRequest {
     pub tx_blob: String,
     pub fail_hard: Option<bool>,
 }
 
-impl From<SubmitRequest> for Value {
-    fn from(val: SubmitRequest) -> Self {
-        let value = serde_json::to_value(val);
-        if let Err(e) = &value {
-            dbg!(e);
-        };
-        let mut value = value.unwrap().as_object().unwrap().to_owned();
-        value.insert("id".into(), Uuid::new_v4().to_string().into());
-        value.insert("command".into(), "submit".into());
-        value.insert("api_version".into(), API_VERSION.into());
-        value.into()
-    }
-}
-
 impl XrplRequest for SubmitRequest {
     type Response = XrplResponse<SubmitResponse>;
+    const COMMAND: &'static str = "submit";
 }
 
 #[derive(Debug, Deserialize)]

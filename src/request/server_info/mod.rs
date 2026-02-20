@@ -1,23 +1,13 @@
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 
 use super::{XrplRequest, XrplResponse};
 
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct ServerInfoRequest;
-
-impl From<ServerInfoRequest> for Value {
-    fn from(_: ServerInfoRequest) -> Self {
-        json!({
-            "command": "server_info",
-            "id": Uuid::new_v4().to_string()
-        })
-    }
-}
 
 impl XrplRequest for ServerInfoRequest {
     type Response = XrplResponse<ServerInfoResult>;
+    const COMMAND: &'static str = "server_info";
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -29,7 +19,7 @@ pub struct ServerInfoResult {
 pub struct ServerInfo {
     pub amendment_blocked: Option<bool>,
     pub build_version: String,
-    pub closed_ledger: Option<Value>,
+    pub closed_ledger: Option<serde_json::Value>,
     pub complete_ledgers: String,
     pub hostid: String,
     pub initial_sync_duration_us: String,
@@ -37,7 +27,7 @@ pub struct ServerInfo {
     pub jq_trans_overflow: String,
     pub last_close: ServerInfoLastClose,
     pub load_factor: u64,
-    pub network_id: u64,
+    pub network_id: Option<u64>,
     pub peer_disconnects: String,
     pub peer_disconnects_resources: String,
     pub peers: u64,
@@ -47,7 +37,7 @@ pub struct ServerInfo {
     pub state_accounting: ServerInfoStateAccounting,
     pub time: String,
     pub uptime: u64,
-    pub validated_ledger: ServerInfoValidatedLedger,
+    pub validated_ledger: Option<ServerInfoValidatedLedger>,
     pub validation_quorum: u64,
 }
 

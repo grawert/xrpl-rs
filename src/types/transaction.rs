@@ -19,8 +19,6 @@ pub struct Transaction {
     pub signers: Option<Vec<SignerWrapper>>,
     pub source_tag: Option<u32>,
     pub ticket_sequence: Option<u32>,
-
-    // set during singing process
     pub signing_pub_key: Option<String>,
     pub txn_signature: Option<String>,
     pub hash: Option<String>,
@@ -40,7 +38,7 @@ pub enum TransactionType {
     },
     NFTokenBurn {
         nftoken_id: String,
-        owner: String,
+        owner: Option<String>,
     },
     NFTokenCancelOffer {
         nftoken_offers: Vec<String>,
@@ -53,8 +51,8 @@ pub enum TransactionType {
         destination: Option<String>,
     },
     NFTokenMint {
-        nftoken_taxon: String,
-        issuer: String,
+        nftoken_taxon: u32,
+        issuer: Option<String>,
         transfer_fee: Option<u32>,
         uri: Option<String>,
     },
@@ -66,7 +64,7 @@ pub enum TransactionType {
         set_flag: Option<u32>,
         transfer_rate: Option<u32>,
         tick_size: Option<u32>,
-        nftoken_minter: Option<u32>,
+        nftoken_minter: Option<String>,
     },
     TrustSet {
         limit_amount: Amount,
@@ -126,82 +124,15 @@ pub struct Signer {
 pub struct PathStep {
     pub account: Option<String>,
     pub currency: Option<String>,
-    pub isssuer: Option<String>,
+    pub issuer: Option<String>,
 }
 
-/// # Transaction signing interface
-///
-/// ```
-/// use hex;
-/// use anyhow::Result;
-/// use serde_json;
-/// use ripple_keypairs::{PublicKey, PrivateKey};
-/// use rippled_binary_codec::serialize::serialize_tx;
-///
-/// const STX_PREFIX: &str = "53545800"; // STX (535458) + null separator (00)
-///
-/// struct Wallet {
-///     pub public_key: PublicKey,
-///     pub private_key: PrivateKey,
-/// }
-///
-/// impl SigningContext for Wallet {
-///     type Error = anyhow::Error;
-///
-///     fn sign_transaction(
-///         &self,
-///         tx: &Transaction,
-///     ) -> Result<String, Self::Error> {
-///         let mut tx_json: serde_json::Value = serde_json::to_value(&tx)
-///             .expect("Failed to convert transaction to json");
-///         tx_json["SigningPubKey"] = self.public_key.to_string().into();
-///         let json_str = serde_json::to_string(&tx_json)?;
-///
-///         let tx_hex = serialize_tx(json_str, true).ok_or_else(|| {
-///             anyhow!("Failed to serialize transaction for signing")
-///         })?;
-///
-///         let signing_hex = format!("{}{}", STX_PREFIX, tx_hex);
-///         let signing_bytes = hex::decode(&signing_hex)?;
-///         let signature = self.private_key.sign(&signing_bytes);
-///
-///         tx_json["TxnSignature"] = signature.to_string().into();
-///         let final_json = serde_json::to_string(&tx_json)?;
-///
-///         let tx_signed = serialize_tx(final_json, false).ok_or_else(|| {
-///             anyhow!("Failed to serialize transaction for signing")
-///         })?;
-///         Ok(tx_signed)
-///     }
-/// }
-///
-/// // Usage:
-/// let wallet = Wallet::from_seed("sSecret...")?;
-///
-/// let payment = PaymentBuilder::new(
-///     wallet.public_key.derive_address().into(),
-///     destination_address.into(),
-///     sequence.into(),
-///     drops!(10),
-///     xrp!(1.99),
-/// )
-/// .build()
-/// .expect("Create payment failed");
-///
-/// let signed_blob = payment.sign_with(&wallet)?;
-/// let submit_request = SubmitRequest {
-///     tx_blob: signed_blob,
-///     fail_hard: Some(false)
-/// };
-/// ```
 pub trait SigningContext {
     type Error;
-
     fn sign_transaction(&self, tx: &Transaction)
-        -> Result<String, Self::Error>;
+    -> Result<String, Self::Error>;
 }
 
-/// # Make a transaction signable
 pub trait Signable {
     fn sign_with<C: SigningContext>(
         &self,
